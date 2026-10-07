@@ -680,19 +680,31 @@ export function Stage({
         finishIntro();
         return;
       }
+      const plate = clasp.querySelector<HTMLElement>(".clasp-plate");
+      const strap = clasp.querySelector<HTMLElement>(".clasp-strap");
+      const barrel = clasp.querySelector<HTMLElement>(".clasp-barrel");
+      const glow = clasp.querySelector<HTMLElement>(".clasp-glow");
       const o = gsap.timeline();
-      o.add(() => sound.play("clasp"), 0)
+      // three beats: the thumb presses the plate down, the catch lets go and springs, then the strap swings clear
+      o.add(() => sound.play("clasp"), 0.04)
         .to(introRef.current, { autoAlpha: 0, duration: 0.4 }, 0)
-        .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.7, ease: "power2.out" }, 0)
-        .to(clasp, { scale: 1.08, x: -3, rotation: 0, duration: 0.09, ease: "power2.out" }, 0)
-        .to(clasp, { rotationY: 168, x: 0, scale: 1, duration: 0.8, ease: "power3.inOut" }, 0.09)
-        .to(clasp, { opacity: 0, duration: 0.3, ease: "power1.in" }, 0.55)
+        .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.8, ease: "power2.out" }, 0)
+        .to(clasp, { rotation: 0, duration: 0.1, ease: "power2.out" }, 0)
+        // the hover glow would show its box edge once the clasp turns in 3D
+        .to(glow, { opacity: 0, duration: 0.12 }, 0)
+        .to(plate, { scale: 0.93, duration: 0.1, ease: "power2.out" }, 0)
+        .to(strap, { scaleX: 0.97, transformOrigin: "100% 50%", duration: 0.1, ease: "power2.out" }, 0)
+        .to(plate, { xPercent: -14, scale: 1.04, duration: 0.18, ease: "back.out(3)" }, 0.1)
+        .to(barrel, { x: 2.5, duration: 0.06, ease: "power1.out", yoyo: true, repeat: 3 }, 0.1)
+        .to(strap, { scaleX: 1, duration: 0.2, ease: "elastic.out(1.4, 0.5)" }, 0.12)
+        .to(clasp, { rotationY: 168, rotation: -2.5, duration: 0.85, ease: "power3.inOut" }, 0.28)
+        .to(clasp, { opacity: 0, duration: 0.3, ease: "power1.in" }, 0.8)
         // gone for good: an invisible button must not sit on top of the page
-        .set(clasp.parentElement, { display: "none" }, 0.9)
+        .set(clasp.parentElement, { display: "none" }, 1.12)
         .add(() => {
           sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
-        }, 0.5);
+        }, 0.62);
     };
     // the closed book opens from the keyboard too, wherever the focus happens to be
     const onIntroKey = (ev: KeyboardEvent) => {
