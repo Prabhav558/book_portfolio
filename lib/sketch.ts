@@ -26,8 +26,6 @@ export type SketchLayout = {
   labels: HTMLElement[];
   clasp: { plate: Rect | null; strap: Rect | null; barrel: Rect | null };
   plank: Rect | null;
-  /** the other volumes, already standing on the ledge as ink (see inkShelfBook); drawn in, in order */
-  shelfPaths: SVGPathElement[][];
 };
 
 const NS = "http://www.w3.org/2000/svg";
@@ -54,43 +52,6 @@ function half(B: Rect, up: boolean, endY: number, rl: number, rr: number) {
   const edge = up ? y : y + h;
   const s = up ? 1 : -1;
   return `M${f(x)},${f(y + h / 2)} L${f(x)},${f(edge + s * rl)} Q${f(x)},${f(edge)} ${f(x + rl)},${f(edge)} L${f(x + w - rr)},${f(edge)} Q${f(x + w)},${f(edge)} ${f(x + w)},${f(edge + s * rr)} L${f(x + w)},${f(endY)}`;
-}
-
-/** A volume standing on the ledge: up the binding, over the top, down the fore-edge. */
-function standing(r: Rect) {
-  const { x, y, w, h } = r;
-  const a = Math.min(h * 0.03, w / 4);
-  return `M${f(x)},${f(y + h)} L${f(x)},${f(y + a)} Q${f(x)},${f(y)} ${f(x + a)},${f(y)} L${f(x + w - a)},${f(y)} Q${f(x + w)},${f(y)} ${f(x + w)},${f(y + a)} L${f(x + w)},${f(y + h)}`;
-}
-
-/**
- * A volume that has not been opened yet stays a drawing on the shelf. This puts one there,
- * fully drawn; the opening sketch draws them in, and the scene fades one out when its book
- * is first taken down and turns real.
- */
-export function inkShelfBook(svg: SVGSVGElement, r: Rect) {
-  const g = document.createElementNS(NS, "g");
-  g.setAttribute("fill", "none");
-  g.setAttribute("stroke", INK);
-  g.setAttribute("stroke-linecap", "round");
-  g.setAttribute("stroke-linejoin", "round");
-  const sx = r.x + r.w * 0.16;
-  const mid = r.x + r.w * 0.58;
-  const paths = [
-    { d: standing(r), w: 1.15, o: 0.82 },
-    { d: `M${f(sx)},${f(r.y + r.h)} L${f(sx)},${f(r.y + 1)}`, w: 1, o: 0.7 },
-    // a mark where the cover's tooling is
-    { d: `M${f(mid - r.w * 0.11)},${f(r.y + r.h * 0.4)} L${f(mid + r.w * 0.11)},${f(r.y + r.h * 0.4)}`, w: 1, o: 0.6 },
-  ].map((q) => {
-    const path = document.createElementNS(NS, "path");
-    path.setAttribute("d", q.d);
-    path.setAttribute("stroke-width", String(q.w));
-    path.setAttribute("stroke-opacity", String(q.o));
-    g.appendChild(path);
-    return path;
-  });
-  svg.appendChild(g);
-  return { g, paths };
 }
 
 /** The same lettering as the real element, in ink, each letter waiting below its own baseline. */
@@ -180,7 +141,7 @@ export function buildSketch(svg: SVGSVGElement, host: HTMLElement, layout: Sketc
     strokes.push({ d: `M${at(20, 37)} L${at(28, 37)}`, at: 1.5, dur: 0.26, w, ease: "power2.out" });
   }
 
-  // 4 · the ledge grows out from its middle, and the other volumes rise from it
+  // 4 · the ledge grows out from its middle
   const shelfAt = 1.42;
   if (P) {
     const mid = P.x + P.w / 2;
@@ -190,32 +151,6 @@ export function buildSketch(svg: SVGSVGElement, host: HTMLElement, layout: Sketc
   }
   const tl = gsap.timeline();
   let end = 0;
-  // (these are not part of this drawing's own ink: they stay on the shelf after it has gone)
-  layout.shelfPaths.forEach((paths, i) => {
-    paths.forEach((path, j) => {
-      const at = (shelfAt + 0.5 + i * 0.12 + j * 0.12) * PACE;
-      const dur = (j ? 0.42 : 0.62) * PACE;
-      path.setAttribute("pathLength", "1");
-      path.style.strokeDasharray = "1 1.5";
-      path.style.strokeDashoffset = "1.02";
-      path.style.visibility = "hidden";
-      tl.fromTo(
-        path,
-        { strokeDashoffset: 1.02 },
-        {
-          strokeDashoffset: 0,
-          duration: dur,
-          ease: j ? "power2.out" : "power2.inOut",
-          immediateRender: false,
-          onStart: () => {
-            path.style.visibility = "visible";
-          },
-        },
-        at,
-      );
-      end = Math.max(end, at + dur);
-    });
-  });
   for (const s of strokes) {
     const path = document.createElementNS(NS, "path");
     path.setAttribute("d", s.d);

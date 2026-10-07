@@ -72,6 +72,10 @@ export const Pager = forwardRef<HTMLDivElement, { onPrev: () => void; onNext: ()
           </span>
           <span className="now-page" data-now-page />
         </span>
+        {/* how far through this volume: a hairline that is inked in as the pages go by */}
+        <span className="now-line">
+          <i />
+        </span>
       </div>
       <div className="pager-nav">
         <button type="button" className="pager-btn" data-prev data-cursor="prev" aria-label="Previous page" onClick={onPrev}>
