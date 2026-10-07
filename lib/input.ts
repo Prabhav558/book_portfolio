@@ -24,7 +24,7 @@ export function bindInput(o: {
   // After a turn the rest of that gesture (a trackpad's long inertia tail, a wheel spun fast) is ignored;
   // the next turn waits for a pause or a fresh, stronger push.
   const NEED = 80;
-  const COOL = 520;
+  const COOL = 240;
   let lastWheel = 0;
   let lastAbs = 0;
   let lastSign = 0;
@@ -93,6 +93,8 @@ export function bindInput(o: {
 
   const onMove = (e: PointerEvent) => {
     if (e.pointerId !== id || phase === "idle" || phase === "dead") return;
+    // a mouse that moves with no button down has been released somewhere we did not hear
+    if (e.pointerType === "mouse" && e.buttons === 0) return dropHold();
     const dx = e.clientX - x0;
     const dy = e.clientY - y0;
     if (phase === "pending") {
@@ -139,6 +141,23 @@ export function bindInput(o: {
   };
   const onUp = (e: PointerEvent) => finish(e, false);
   const onCancel = (e: PointerEvent) => finish(e, true);
+  /**
+   * A press that never gets its release (the browser took the touch for a system gesture, the tab lost focus,
+   * a long-press menu came up, the mouse went up outside the window) must not leave a page held half-turned.
+   * Every way a hold can be lost lets go of it, as a cancelled drag: the sheet falls back.
+   */
+  const dropHold = () => {
+    if (phase === "idle" || id < 0) return;
+    finish({ pointerId: id } as PointerEvent, true);
+  };
+  /** Some phone browsers drop the pointer's release; the touch's own end is the backstop (every finger up). */
+  const onTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length === 0) window.setTimeout(dropHold, 60);
+  };
+  const onLost = (e: Event) => {
+    if (e.type === "visibilitychange" && !document.hidden) return;
+    dropHold();
+  };
   const onClick = (e: MouseEvent) => {
     if (swallowClick) {
       e.preventDefault();
@@ -173,7 +192,17 @@ export function bindInput(o: {
   window.addEventListener("pointercancel", onCancel);
   window.addEventListener("click", onClick, true);
   window.addEventListener("keydown", onKey);
+  window.addEventListener("touchend", onTouchEnd, { passive: true });
+  window.addEventListener("touchcancel", onLost, { passive: true });
+  window.addEventListener("blur", onLost);
+  window.addEventListener("contextmenu", onLost);
+  document.addEventListener("visibilitychange", onLost);
   return () => {
+    window.removeEventListener("touchend", onTouchEnd);
+    window.removeEventListener("touchcancel", onLost);
+    window.removeEventListener("blur", onLost);
+    window.removeEventListener("contextmenu", onLost);
+    document.removeEventListener("visibilitychange", onLost);
     window.removeEventListener("wheel", onWheel);
     window.removeEventListener("pointerdown", onDown);
     window.removeEventListener("pointermove", onMove);
