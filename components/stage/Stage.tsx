@@ -12,7 +12,7 @@ import { bindInput } from "@/lib/input";
 import { createPeel, createPeek, type Peek } from "@/lib/fold";
 import { cursorProbe } from "@/lib/cursor";
 import { Cursor } from "@/components/ui/Cursor";
-import { buildSketch } from "@/lib/sketch";
+import { buildSketch, inkShelfBook } from "@/lib/sketch";
 import { overlay } from "@/lib/overlay";
 import type { Where } from "@/components/ui/IndexCard";
 import type { Ambient } from "@/components/three/ambient";
@@ -109,6 +109,7 @@ export function Stage({
     [paged],
   );
   const here = useRef<Where>(null);
+  const shelfInkRef = useRef<SVGSVGElement>(null);
   const sayRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -141,6 +142,15 @@ export function Stage({
     const sketchSvg = sketchRef.current!;
     const ink = sketchSvg.parentElement!;
     const camera = cameraRef.current!;
+    const shelfInk = shelfInkRef.current!;
+    const stageEl = rootEl.querySelector<HTMLElement>(".stage")!;
+    /** An element's box inside the scene (whatever the camera is doing). */
+    const sceneRect = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const o = stageEl.getBoundingClientRect();
+      const k = o.width / (stageEl.offsetWidth || o.width);
+      return { x: (r.left - o.left) / k, y: (r.top - o.top) / k, w: r.width / k, h: r.height / k };
+    };
     // how far the shot drops toward the shelf when no book is on the table (none where the shelf stands at the side)
     const camDrop = cfg.current.layout.kind === "phone-land" ? 0 : clamp(cfg.current.layout.h * 0.15, 56, 150);
     let camY = 0;
@@ -174,31 +184,38 @@ export function Stage({
       return [L.cx / L.w, 1 - L.cy / L.h] as const;
     };
 
-    // ───────── the shelf fills as the volumes are read ─────────
-    // a volume that has not been taken down yet is not on the shelf at all; it appears when it
-    // is first pulled out, and stands there again once it has been put back
-    const mark = (k: number) => {
-      const unseen = !seen.has(k);
-      slots[k]?.toggleAttribute("data-unseen", unseen);
-      slots[k]?.toggleAttribute("disabled", unseen);
-      shelfLabels[k]?.toggleAttribute("data-unseen", unseen);
-    };
-    const drawShelf = () => {
+    // ───────── volumes that have not been opened yet are still drawings on the shelf ─────────
+    const inkOf = new Map<number, SVGGElement>();
+    let shelfPaths: SVGPathElement[][] = [];
+    // the drawings stay out of sight while the scene boots; the intro (or skipping it) shows them
+    let shelfInkOn = skipIntro;
+    const drawShelfInk = () => {
+      shelfInk.style.visibility = shelfInkOn ? "" : "hidden";
+      shelfInk.setAttribute("viewBox", `0 0 ${stageEl.offsetWidth} ${stageEl.offsetHeight}`);
+      shelfInk.replaceChildren();
+      inkOf.clear();
+      shelfPaths = [];
       els.forEach((e, k) => {
         e.anchor.style.opacity = seen.has(k) ? "" : "0";
-        mark(k);
+        const cover = e.anchor.querySelector(".cover-front");
+        if (seen.has(k) || !cover) return;
+        const { g, paths } = inkShelfBook(shelfInk, sceneRect(cover));
+        inkOf.set(k, g);
+        shelfPaths.push(paths);
       });
     };
-    /** The first time a volume is taken down it comes into view. */
+    /** The first time a volume is taken down, its drawing turns into the book. */
     const develop = (k: number) => {
       seen.add(k);
-      mark(k);
+      const g = inkOf.get(k);
+      inkOf.delete(k);
       gsap.to(els[k].anchor, { opacity: 1, duration: 0.5, ease: "power1.out", clearProps: "opacity" });
+      if (g) gsap.to(g, { opacity: 0, duration: 0.5, ease: "power1.in", onComplete: () => g.remove() });
     };
 
     // ───────── shelf hover: the book comes forward a little ─────────
     function lift(k: number, up: boolean) {
-      if (up && (!seen.has(k) || !shelved[k] || director?.busy)) return;
+      if (up && (!shelved[k] || director?.busy)) return;
       const h = els[k].anchor.offsetHeight;
       const { body, shadow } = els[k];
       if (!up && !shelved[k]) {
@@ -218,6 +235,8 @@ export function Stage({
         });
         if (up || shelved[k]) gsap.to(shadow, { opacity: up ? 0.6 : 0, y: up ? h * 0.03 : 0, duration: 0.5, ease: "power3.out", overwrite: "auto" });
       }
+      const g = inkOf.get(k);
+      if (g) gsap.to(g, { y: up ? -slots[k].offsetHeight * 0.085 : 0, duration: 0.45, ease: "power3.out", overwrite: "auto" });
       shelfLabels[k]?.toggleAttribute("data-hover", up);
       slots[k]?.toggleAttribute("data-hover", up);
     }
@@ -305,7 +324,7 @@ export function Stage({
         b.tl.eventCallback("onUpdate", () => onTick(k));
         applyShelfPose(els[k], slots[k]);
       });
-      drawShelf();
+      drawShelfInk();
     };
 
     // ───────── what the UI says ─────────
@@ -755,7 +774,11 @@ export function Stage({
         labels: Array.from(e0.anchor.querySelectorAll<HTMLElement>("[data-cover-title], [data-cover-mark]")),
         clasp: { plate: of(e0.anchor, ".clasp-plate"), strap: of(e0.anchor, ".clasp-strap"), barrel: of(e0.anchor, ".clasp-barrel") },
         plank: of(rootEl, ".plank"),
+        shelfPaths,
       });
+      // every stroke is now waiting to be drawn, so the drawings can be uncovered
+      shelfInkOn = true;
+      shelfInk.style.visibility = "";
 
       // the sheet starts to dissolve as the last strokes land, and the ink follows it out
       const develop = Math.max(0.6, sk.duration - 0.3);
@@ -939,6 +962,8 @@ export function Stage({
 
           {/* the sheet the opening drawing is made on, and the ink itself (lib/sketch.ts) */}
           <div ref={paperRef} className="sheet" />
+          {/* volumes not yet opened stay on the shelf as drawings */}
+          <svg ref={shelfInkRef} className="shelf-ink" aria-hidden />
           <div className="ink" aria-hidden>
             <svg ref={sketchRef} className="sketch" />
           </div>

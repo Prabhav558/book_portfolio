@@ -151,6 +151,16 @@ html.stage-lock body {
   width: 100%;
   height: 100%;
 }
+/* volumes not opened yet: drawings that stay on the shelf after the opening sketch has gone */
+.shelf-ink {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
 .ink-label {
   position: absolute;
   box-sizing: border-box;
@@ -1386,16 +1396,6 @@ html.stage-lock body {
   content: "";
   position: absolute;
   inset: -6px -5px -10px;
-}
-/* a volume nobody has taken down yet is not on the shelf: no label, no mark, nothing to press */
-.shelf-slot[data-unseen] {
-  pointer-events: none;
-}
-.shelf-slot[data-unseen]::after,
-.shelf-slot[data-unseen] .slot-mark,
-.shelf-label[data-unseen] {
-  opacity: 0;
-  pointer-events: none;
 }
 /* where the open book stood: a short bar in its colour, lying on the ledge — "you are here" */
 .slot-mark {
