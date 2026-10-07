@@ -92,6 +92,7 @@ export class Ambience {
   constructor(
     private ctx: AudioContext,
     private out: AudioNode,
+    private rec: Map<string, AudioBuffer[]> = new Map(),
   ) {
     this.roomG = ctx.createGain();
     this.windG = ctx.createGain();
@@ -111,8 +112,8 @@ export class Ambience {
     this.built = true;
     const c = this.ctx;
     const r = rng(77);
-    const roomBuf = this.buf(loopOf(run(brown(LOOP * SR + 0.75 * SR, r), new Biquad().lowpass(210, 0.7)), 0.22));
-    const windBuf = this.buf(loopOf(pink(LOOP * SR + 0.75 * SR, r), 0.2));
+    const roomBuf = this.rec.get("room")?.[0] ?? this.buf(loopOf(run(brown(LOOP * SR + 0.75 * SR, r), new Biquad().lowpass(210, 0.7)), 0.22));
+    const windBuf = this.rec.get("wind")?.[0] ?? this.buf(loopOf(pink(LOOP * SR + 0.75 * SR, r), 0.2));
     const room = c.createBufferSource();
     room.buffer = roomBuf;
     room.loop = true;
@@ -143,11 +144,9 @@ export class Ambience {
     room.start();
     wind.start();
     this.src.push(room, wind);
-    for (let v = 0; v < 3; v++) {
-      this.events.bird.push(this.buf(bird(v, rng(100 + v))));
-      this.events.cricket.push(this.buf(cricket(v, rng(200 + v))));
-    }
-    for (let v = 0; v < 3; v++) this.events.rustle.push(this.buf(render("paper", v)));
+    this.events.bird = this.rec.get("bird") ?? [0, 1, 2].map((v) => this.buf(bird(v, rng(100 + v))));
+    this.events.cricket = this.rec.get("cricket") ?? [0, 1, 2].map((v) => this.buf(cricket(v, rng(200 + v))));
+    for (let v = 0; v < 3; v++) this.events.rustle.push(this.rec.get("paper")?.[v % this.rec.get("paper")!.length] ?? this.buf(render("paper", v)));
   }
 
   /** Move toward the mix for this hour, over a few seconds. */

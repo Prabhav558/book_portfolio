@@ -237,3 +237,20 @@ export function measure(buf: Float32Array) {
     midHighShare: band(2000, 6000) / total,
   };
 }
+
+/** Level a recording: loudness to `rmsDb`, peak under `peakDb`, a few ms of fade at each end. For loops, `fade` is 0. */
+export function normalise(buf: Float32Array, rmsDb: number, peakDb: number, fade = 0.004) {
+  const rms = weightedRms(buf) || 1e-6;
+  let peak = 0;
+  for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
+  const g = Math.min(db(rmsDb) / rms, db(peakDb) / (peak || 1e-6));
+  const f = Math.round(fade * SR);
+  for (let i = 0; i < buf.length; i++) {
+    let k = g;
+    if (i < f) k *= 0.5 - 0.5 * Math.cos((Math.PI * i) / f);
+    const j = buf.length - 1 - i;
+    if (j < f) k *= 0.5 - 0.5 * Math.cos((Math.PI * j) / f);
+    buf[i] *= k;
+  }
+  return buf;
+}

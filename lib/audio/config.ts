@@ -71,3 +71,16 @@ export const GAP: Record<SoundName | "voice", { min: number; soon: number }> = {
 
 /** Sound is off until asked for by anyone who has asked their system for less motion. */
 export const STORAGE_KEY = "book-portfolio:audio:v2";
+
+/**
+ * Real recordings, when there are some. List files from /public (mono or stereo, WAV/OGG/MP3, any loudness: they are
+ * levelled on load) and they replace the synthesised version of that sound; a sound with no files here stays
+ * synthesised, so recordings can be added one at a time. Several files for a name are its variants.
+ *
+ *   flip: ["/sounds/flip-1.wav", "/sounds/flip-2.wav"]
+ *
+ * Names: the SoundName list above; `grab` and `push` for the voices (one file serves every person, pitched up or
+ * down a little to suit them); `room` and `wind` (seamless loops); `bird` and `cricket` (single short events).
+ */
+export type SampleName = SoundName | "grab" | "push" | "room" | "wind" | "bird" | "cricket";
+export const SAMPLES: Partial<Record<SampleName, string[]>> = {};

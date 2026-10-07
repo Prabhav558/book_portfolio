@@ -63,6 +63,7 @@ A quiet antique library, never a UI. Everything is made in the browser (`lib/aud
 - **Never on scroll.** Sounds hang on the timeline's markers (a page turn, a cover, a shelf), not on wheel events; quick repeats are held apart and a riffle is thinned out.
 - **People** have voices (formant synthesis): "wohoo" when picked up, "woaahh" when pushed, each in their own pitch.
 - **The room** follows the hour (`audio.setAmbience`): daytime a faint room tone, far birds, now and then paper; evening quieter, with wind and crickets; night a very low tone and a little wind.
+- **Real recordings:** put files in `public/sounds/` and list them in `SAMPLES` in `lib/audio/config.ts` (names and counts are in the comment there). A listed sound replaces its synthesised version, is levelled on load, and an unlisted one stays synthesised, so you can swap them one at a time.
 - **Reduced motion** starts with sound off; a choice made with the switch is kept. The switch (with a volume panel) is top right.
 - **Checking the sound:** the sounds are plain functions (`render` in `synth.ts`, `measure` in `dsp.ts`), so they can be rendered and measured (peak, loudness, share of 2–6 kHz energy) without a browser.
 

@@ -1,6 +1,7 @@
 import { Ambience, type AmbPeriod } from "./ambience";
-import { AUDIO_CONFIG, GAP, LEVEL, OUTPUT_TRIM, STORAGE_KEY, VARIANTS, type SoundName } from "./config";
-import { SR } from "./dsp";
+import { asset } from "../asset";
+import { AUDIO_CONFIG, GAP, LEVEL, OUTPUT_TRIM, PEAK_CAP_DB, SAMPLES, STORAGE_KEY, TARGET_RMS_DB, VARIANTS, type SampleName, type SoundName } from "./config";
+import { SR, normalise } from "./dsp";
 import { render } from "./synth";
 import { VOICE_VARIANTS, bucketOf, renderVoice, type VoiceKind } from "./voices";
 
@@ -21,6 +22,9 @@ export class AudioManager {
   private ambBus!: GainNode;
   private amb: Ambience | null = null;
   private cache = new Map<string, AudioBuffer>();
+  /** Recordings, decoded and levelled, by name. */
+  private samples = new Map<string, AudioBuffer[]>();
+  private ready: Promise<void> = Promise.resolve();
   private bag = new Map<string, number[]>();
   private last = new Map<string, number[]>();
   private subs = new Set<(s: Settings) => void>();
@@ -91,7 +95,7 @@ export class AudioManager {
     this.ambBus.gain.setTargetAtTime(this.s.ambient, t, 0.05);
     if (on) {
       void this.ctx.resume();
-      this.amb?.start(this.period);
+      void this.ready.then(() => this.s.enabled && this.amb?.start(this.period));
     } else this.amb?.stop();
   }
   setEnabled(on: boolean) {
@@ -137,7 +141,8 @@ export class AudioManager {
       this.sfxBus.connect(this.master);
       this.ambBus.connect(this.master);
       this.master.connect(lim).connect(c.destination);
-      this.amb = new Ambience(c, this.ambBus);
+      this.amb = new Ambience(c, this.ambBus, this.samples);
+      this.ready = this.load();
       this.apply();
       this.prepare();
       return;
@@ -145,14 +150,47 @@ export class AudioManager {
     this.apply();
   }
 
+  /** Fetch and decode whatever recordings are listed in SAMPLES. A file that fails just leaves that sound synthesised. */
+  private async load() {
+    const c = this.ctx;
+    if (!c) return;
+    const loop = (n: string) => n === "room" || n === "wind";
+    await Promise.all(
+      (Object.entries(SAMPLES) as [SampleName, string[]][]).map(async ([name, files]) => {
+        const got: AudioBuffer[] = [];
+        for (const f of files) {
+          try {
+            const res = await fetch(asset(f));
+            if (!res.ok) continue;
+            const src = await c.decodeAudioData(await res.arrayBuffer());
+            // to mono at the context's rate, then to the same loudness as everything else
+            const mono = new Float32Array(src.length);
+            for (let ch = 0; ch < src.numberOfChannels; ch++) {
+              const d = src.getChannelData(ch);
+              for (let i = 0; i < d.length; i++) mono[i] += d[i] / src.numberOfChannels;
+            }
+            const isVoice = name === "grab" || name === "push";
+            normalise(mono, loop(name) ? -14 : TARGET_RMS_DB, isVoice ? PEAK_CAP_DB - 1 : PEAK_CAP_DB, loop(name) ? 0 : 0.006);
+            const b = c.createBuffer(1, mono.length, src.sampleRate);
+            b.copyToChannel(mono, 0);
+            got.push(b);
+          } catch {
+            /* leave it synthesised */
+          }
+        }
+        if (got.length) this.samples.set(name, got);
+      }),
+    );
+  }
+
   /** Render the effects ahead of use, a few at a time, when the page is idle. */
   prepare() {
     if (typeof window === "undefined" || !this.s.enabled) return;
     const jobs: (() => void)[] = [];
     (Object.keys(VARIANTS) as SoundName[]).forEach((n) => {
-      for (let v = 0; v < VARIANTS[n]; v++) jobs.push(() => void this.buffer(`${n}:${v}`));
+      if (!SAMPLES[n]?.length) for (let v = 0; v < VARIANTS[n]; v++) jobs.push(() => void this.buffer(`${n}:${v}`));
     });
-    for (const k of ["grab", "push"]) for (let b = 0; b < 3; b++) for (let v = 0; v < VOICE_VARIANTS; v++) jobs.push(() => void this.buffer(`${k}:${b}:${v}`));
+    for (const k of ["grab", "push"] as const) if (!SAMPLES[k]?.length) for (let b = 0; b < 3; b++) for (let v = 0; v < VOICE_VARIANTS; v++) jobs.push(() => void this.buffer(`${k}:${b}:${v}`));
     const step = () => {
       const j = jobs.shift();
       if (!j) return;
@@ -208,11 +246,10 @@ export class AudioManager {
     return g;
   }
 
-  private fire(key: string, level: number, o: { pan?: number; rate?: number } = {}) {
+  private fire(b: AudioBuffer | null, level: number, o: { pan?: number; rate?: number } = {}) {
     const c = this.ctx;
     if (!c || !this.s.enabled || c.state === "closed") return;
     if (c.state === "suspended") void c.resume();
-    const b = this.buffer(key);
     if (!b) return;
     const s = c.createBufferSource();
     s.buffer = b;
@@ -233,7 +270,9 @@ export class AudioManager {
     if (!this.ctx || !this.s.enabled) return;
     const g = this.gate(name, GAP[name]);
     if (!g) return;
-    this.fire(`${name}:${this.nextVariant(name, VARIANTS[name])}`, LEVEL[name] * g, { pan: name === "flip" ? (Math.random() - 0.5) * 0.25 : 0 });
+    const rec = this.samples.get(name);
+    const v = this.nextVariant(name, rec?.length ?? VARIANTS[name]);
+    this.fire(rec ? rec[v] : this.buffer(`${name}:${v}`), LEVEL[name] * g, { pan: name === "flip" ? (Math.random() - 0.5) * 0.25 : 0 });
   }
   playPageTurn() {
     this.cue("flip");
@@ -262,9 +301,16 @@ export class AudioManager {
   playCharacterInteraction(kind: VoiceKind, pitch = 150, x = 0.5) {
     if (!this.ctx || !this.s.enabled) return;
     if (!this.gate("voice", GAP.voice)) return;
+    const rec = this.samples.get(kind);
+    if (rec) {
+      // one recording serves everybody: shift it toward this person's pitch, within what still sounds like a person
+      const v = this.nextVariant(`voice:${kind}`, rec.length);
+      this.fire(rec[v], LEVEL.voice, { pan: (x - 0.5) * 0.8, rate: Math.min(1.18, Math.max(0.86, (pitch / 150) ** 0.5)) });
+      return;
+    }
     const b = bucketOf(pitch);
     const v = this.nextVariant(`voice:${kind}:${b}`, VOICE_VARIANTS);
-    this.fire(`${kind}:${b}:${v}`, LEVEL.voice, { pan: (x - 0.5) * 0.8 });
+    this.fire(this.buffer(`${kind}:${b}:${v}`), LEVEL.voice, { pan: (x - 0.5) * 0.8 });
   }
 
   /** The hour changes the room; the world engine reports it. */
