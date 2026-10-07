@@ -85,7 +85,7 @@ function Detail({ p, index }: { p: Project; index: number }) {
         {p.live && (
           <div className={row}>
             <dt className="t-meta">Website</dt>
-            <dd className="text-[0.95em]">
+            <dd className="min-w-0 text-[0.95em] [overflow-wrap:anywhere]">
               <TextLink href={p.live} external>
                 {address(p.live)}
               </TextLink>
@@ -95,7 +95,7 @@ function Detail({ p, index }: { p: Project; index: number }) {
         {p.code && (
           <div className={row}>
             <dt className="t-meta">Source</dt>
-            <dd className="text-[0.95em]">
+            <dd className="min-w-0 text-[0.95em] [overflow-wrap:anywhere]">
               <TextLink href={p.code} external>
                 {address(p.code)}
               </TextLink>
