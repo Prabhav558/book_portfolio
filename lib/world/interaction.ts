@@ -45,6 +45,8 @@ export class Interaction {
       if (ex * ex + ey * ey > 1) continue;
       if (!best || n.y > best.y) best = n;
     }
+    // not through a window (the chat) laid over them
+    if (best && (document.elementFromPoint(x, y) as Element | null)?.closest?.("[data-nodrag]")) return null;
     return best;
   }
 

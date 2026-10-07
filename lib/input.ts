@@ -34,6 +34,8 @@ export function bindInput(o: {
   const onWheel = (e: WheelEvent) => {
     if (e.ctrlKey) return; // pinch-zoom on trackpads
     if (!o.enabled()) return;
+    // something with a scroll of its own (the chat's messages) keeps the wheel while the pointer is over it
+    if ((e.target as Element | null)?.closest?.("[data-nowheel]")) return;
     e.preventDefault();
     const raw = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     // lines and pages (some browsers, some mice) are brought to pixels

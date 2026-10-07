@@ -20,7 +20,7 @@ npm run build && npm start
 | Résumé download | replace `public/resume.pdf` |
 | Logo | `public/logo.png` is the full mark with the name; `public/logo-plate.png` is the monogram on its dark plate (the top-left corner, which also takes you back to page one); `app/icon.png` and `app/apple-icon.png` are the browser and phone icons |
 | Files in `public/` | always go through `asset("/file")` (`lib/asset.ts`) in plain `<img>` / `<a>`, so they keep working under the GitHub Pages `/book_portfolio/` prefix |
-| Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`. Without a key the form falls back to `mailto:`. |
+| Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`, **and** as a repository secret of the same name (Settings → Secrets and variables → Actions) for the deployed site. Without a key the form only opens the visitor's mail app, and says so: nothing reaches you unless they press send there. |
 | Room, paper, ink, oak and steel | the tokens at the top of `app/globals.css` (`--room`, `--paper`, `--ink`, `--oak`, …) and the `.clasp-*` rules |
 | Typefaces | `app/layout.tsx` (Instrument Serif for display, Instrument Sans for text) |
 | What a page is called in the index | `name` on its block, in the files under `components/pages/` |
@@ -46,6 +46,12 @@ Around the book there is a quiet miniature library: shelves, a desk, a reading c
 - **Phones** get 3 slow figures and the light; tablets 5. Dragging, pushing, the custom cursor and the physics are for a mouse (`pointer: fine`) only.
 - **Reduced motion:** the calm Quick view is the default; if you opt in to the animated version the room is still.
 - **Try a time of day** with `?worldTime=21:30` on the address. Thresholds are `DEFAULT_TOD` in `timeOfDay.ts`.
+
+## The chat, the tab, the rolling line
+
+- **Chat** (`components/ui/ChatBot.tsx`, `lib/chat/brain.ts`): the round button on the left opens into "Hey, Prabhav here. Ask anything about me". It is not a language model and says so: every answer is composed from `content/portfolio.ts` (work, projects, skills, education, contact), so editing that file edits the answers. Nothing leaves the browser. To make it a real model later, put a small proxy in front of an API (never ship an API key in this static site) and have `reply()` call it.
+- **Right-hand tab** (`components/ui/SideDock.tsx`): GitHub, LinkedIn, résumé and email, on the right border from 1100 px wide up.
+- **Rolling line** (`components/ui/RollText.tsx`): the role on the cover rolls over to `profile.altRole` on hover, focus or tap.
 
 ## How it works
 

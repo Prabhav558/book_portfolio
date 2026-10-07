@@ -2666,3 +2666,458 @@ html.has-cursor textarea {
 [data-kind="phone"] .pop-title {
   font-size: 34px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   A line that rolls over like a desk calendar (components/ui/RollText)
+   ══════════════════════════════════════════════════════════════════ */
+
+.roll {
+  display: inline-block;
+  position: relative;
+  height: 1.5em;
+  line-height: 1.5em;
+  vertical-align: bottom;
+  perspective: 14em;
+  width: var(--wa, auto);
+  cursor: default;
+  outline: none;
+  transition: width 0.7s cubic-bezier(0.65, 0, 0.25, 1);
+}
+.roll:hover,
+.roll:focus-visible,
+.roll[data-flip] {
+  width: var(--wb, auto);
+}
+.roll-drum {
+  display: block;
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* the drum's axis runs through the middle of the line, so both faces sit the same distance from it */
+  transform: translateZ(-0.75em);
+  transition: transform 0.7s cubic-bezier(0.65, 0, 0.25, 1);
+}
+.roll:hover .roll-drum,
+.roll:focus-visible .roll-drum,
+.roll[data-flip] .roll-drum {
+  transform: translateZ(-0.75em) rotateX(-90deg);
+}
+.roll-hit {
+  position: absolute;
+  inset: -4px -3px;
+  z-index: 1;
+}
+.roll-drum,
+.roll-face {
+  pointer-events: none;
+}
+.roll-face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  backface-visibility: hidden;
+}
+.roll-a {
+  transform: rotateX(0deg) translateZ(0.75em);
+}
+.roll-b {
+  transform: rotateX(90deg) translateZ(0.75em);
+}
+/* a faint rule under it, so it reads as something that answers */
+.roll::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.18em;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.22;
+  transition: opacity 0.4s;
+}
+.roll:hover::after,
+.roll:focus-visible::after {
+  opacity: 0.5;
+}
+.roll:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .roll,
+  .roll-drum {
+    transition: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   The right-hand tab, the chat on the left
+   ══════════════════════════════════════════════════════════════════ */
+
+.extras {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+/* a tab fixed to the right border: two outer corners curved, the side on the edge square */
+.dock {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 6px 8px 8px;
+  border-radius: 18px 0 0 18px;
+  background: var(--paper-grain), #fbf9f3;
+  background-size: 240px 240px, auto;
+  box-shadow:
+    -1px 0 0 rgba(255, 255, 255, 0.7) inset,
+    -4px 6px 22px rgba(40, 32, 22, 0.16),
+    -1px 1px 3px rgba(40, 32, 22, 0.12);
+  pointer-events: auto;
+}
+@media (min-width: 1100px) and (hover: hover) {
+  .dock {
+    display: flex;
+  }
+}
+.dock-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  color: var(--ink-2);
+  transition: background-color 0.25s, color 0.25s, transform 0.4s var(--ease-out);
+}
+.dock-item svg {
+  width: 18px;
+  height: 18px;
+}
+.dock-item:hover,
+.dock-item:focus-visible {
+  background: rgba(21, 21, 21, 0.07);
+  color: var(--ink);
+  transform: translateX(-2px);
+}
+/* the name of it comes out to the left */
+.dock-label {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: #efe6d6;
+  background: #1f1c19;
+  opacity: 0;
+  transform: translate(8px, -50%);
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.4s var(--ease-out);
+}
+.dock-item:hover .dock-label,
+.dock-item:focus-visible .dock-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* the round button on the left: it opens into a pill that says what it is */
+.chat-fab {
+  position: fixed;
+  left: 20px;
+  bottom: 112px;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  max-width: 48px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  color: #efe6d6;
+  background: #1f1c19;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow:
+    0 1px 2px rgba(40, 32, 22, 0.3),
+    0 8px 20px rgba(40, 32, 22, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: max-width 0.6s var(--ease-out), box-shadow 0.4s;
+}
+.chat-fab-dot {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.chat-fab-dot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
+}
+.chat-fab-label {
+  flex: none;
+  padding: 0 20px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.chat-fab:hover,
+.chat-fab:focus-visible {
+  max-width: 340px;
+}
+.chat-fab:hover .chat-fab-label,
+.chat-fab:focus-visible .chat-fab-label {
+  opacity: 1;
+  transition-delay: 0.18s;
+}
+.chat-fab:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.chat {
+  position: fixed;
+  left: 20px;
+  bottom: 112px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  width: min(372px, calc(100vw - 24px));
+  height: min(540px, calc(100dvh - 190px));
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--paper-grain), #fbf9f3;
+  background-size: 240px 240px, auto;
+  border-radius: 16px;
+  box-shadow:
+    0 2px 4px rgba(40, 32, 22, 0.14),
+    0 28px 64px rgba(40, 32, 22, 0.28);
+  transform-origin: 0 100%;
+  pointer-events: auto;
+}
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 12px 16px;
+  border-bottom: 1px solid var(--hair);
+}
+.chat-avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #1f1c19;
+}
+.chat-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.chat-who {
+  flex: 1;
+  display: grid;
+  line-height: 1.25;
+}
+.chat-who b {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+}
+.chat-who i {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.chat-x {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.25s;
+}
+.chat-x svg {
+  width: 14px;
+  height: 14px;
+}
+.chat-x:hover {
+  background: rgba(21, 21, 21, 0.07);
+}
+.chat-log {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.chat-msg {
+  max-width: 86%;
+  padding: 9px 13px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-msg--me {
+  align-self: flex-start;
+  border-radius: 14px 14px 14px 4px;
+  background: rgba(21, 21, 21, 0.06);
+}
+.chat-msg--you {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px 14px;
+  color: #efe6d6;
+  background: #1f1c19;
+}
+.chat-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 1.2em;
+}
+.chat-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  animation: chat-dot 1s infinite ease-in-out;
+}
+.chat-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.chat-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes chat-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.chat-chips button {
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  border: 1px solid rgba(21, 21, 21, 0.18);
+  cursor: pointer;
+  transition: background-color 0.25s, color 0.25s, border-color 0.25s;
+}
+.chat-chips button:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: rgba(21, 21, 21, 0.04);
+}
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--hair);
+}
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 99px;
+  font-size: 14px;
+  color: var(--ink);
+  background: rgba(21, 21, 21, 0.05);
+  border: 1px solid transparent;
+  outline: none;
+  transition: border-color 0.25s, background-color 0.25s;
+}
+.chat-form input:focus {
+  border-color: rgba(21, 21, 21, 0.4);
+  background: #fff;
+}
+.chat-form button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #efe6d6;
+  background: #1f1c19;
+  cursor: pointer;
+  transition: opacity 0.25s, transform 0.3s var(--ease-out);
+}
+.chat-form button svg {
+  width: 16px;
+  height: 16px;
+}
+.chat-form button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.chat-form button:hover:not(:disabled) {
+  transform: translateX(2px);
+}
+.chat-note {
+  padding: 0 16px 12px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+[data-kind="phone"] .chat-fab {
+  left: 6px;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  height: 38px;
+  max-width: 38px;
+}
+[data-kind="phone"] .chat-fab-dot {
+  width: 38px;
+  height: 38px;
+}
+[data-kind="phone"] .chat-fab-label {
+  display: none;
+}
+[data-kind="phone"] .chat {
+  left: 8px;
+  right: 8px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: auto;
+  height: min(74dvh, 560px);
+}
+[data-kind="tablet"] .chat-fab {
+  bottom: 70px;
+}
+[data-kind="tablet"] .chat {
+  bottom: 130px;
+}

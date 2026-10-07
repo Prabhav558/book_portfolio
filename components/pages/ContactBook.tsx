@@ -48,7 +48,7 @@ function Reach() {
   );
 }
 
-type Status = "idle" | "sending" | "sent" | "error";
+type Status = "idle" | "sending" | "sent" | "mail" | "error";
 
 /** What has been typed survives re-layouts (rotating a phone rebuilds the pages). */
 const draft = { name: "", email: "", message: "" };
@@ -76,7 +76,8 @@ function Letter() {
       // No form key configured yet — fall back to the visitor's mail client.
       const body = encodeURIComponent(`${message}\n\n— ${name} (${email})`);
       window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(`Hello from ${name}`)}&body=${body}`;
-      setStatus("sent");
+      // nothing has been sent: that happens only if the visitor presses send in their own mail app
+      setStatus("mail");
       return;
     }
     setStatus("sending");
@@ -97,15 +98,28 @@ function Letter() {
     }
   }
 
-  if (status === "sent") {
+  if (status === "sent" || status === "mail") {
     return (
       <div className="flex h-full flex-col justify-between" data-dynamic>
         <div className="t-meta">A letter</div>
         <div>
-          <p className="t-h2">
-            Sent. <em>Thank you.</em>
-          </p>
-          <p className="t-body mt-[4cqw] max-w-[20em]">I read everything and reply within two days.</p>
+          {status === "sent" ? (
+            <>
+              <p className="t-h2">
+                Sent. <em>Thank you.</em>
+              </p>
+              <p className="t-body mt-[4cqw] max-w-[20em]">I read everything and reply within two days.</p>
+            </>
+          ) : (
+            <>
+              <p className="t-h2">
+                Almost. <em>Press send.</em>
+              </p>
+              <p className="t-body mt-[4cqw] max-w-[20em]">
+                Your mail app should have opened with the letter written out. It reaches me when you send it from there. Nothing opened? Write to {profile.email}.
+              </p>
+            </>
+          )}
         </div>
         <div>
           <button type="button" className="link" onClick={() => setStatus("idle")}>
@@ -138,7 +152,7 @@ function Letter() {
       </div>
       <div className="mt-[1em] flex items-center justify-between gap-[1em]">
         <span className={`t-meta ${status === "error" ? "!text-[#a2483a]" : ""}`} role="status">
-          {status === "error" ? error : "Goes straight to my inbox"}
+          {status === "error" ? error : contactForm.accessKey ? "Goes straight to my inbox" : "Opens your mail app, ready to send"}
         </span>
         <button type="submit" className="btn shrink-0" data-cursor="send" disabled={status === "sending"}>
           {status === "sending" ? "Sending" : "Send"} <Arrow />

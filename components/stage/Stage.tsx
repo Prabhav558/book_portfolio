@@ -23,6 +23,8 @@ import { Shelf } from "@/components/shelf/Shelf";
 import { WorldCanvas } from "@/components/world/WorldCanvas";
 import { asset } from "@/lib/asset";
 import { ProjectPopup } from "@/components/ui/ProjectPopup";
+import { SideDock } from "@/components/ui/SideDock";
+import { ChatBot } from "@/components/ui/ChatBot";
 import type { WorldEngine } from "@/lib/world/engine";
 import type { Rect } from "@/lib/world/types";
 import { IntroControls, Pager, ScrollHint, TopBar } from "@/components/ui/Chrome";
@@ -71,6 +73,7 @@ export function Stage({
   const introRef = useRef<HTMLDivElement>(null);
   const claspRef = useRef<HTMLButtonElement>(null);
   const worldRef = useRef<WorldEngine | null>(null);
+  const extraRef = useRef<HTMLDivElement>(null);
 
   const cfg = useRef({ skipIntro, onIntroDone, onPosition, layout, paged, start });
   cfg.current = { skipIntro, onIntroDone, onPosition, layout, paged, start };
@@ -165,7 +168,7 @@ export function Stage({
     // ───────── first look: everything at rest, hidden behind the white page ─────────
     els.forEach(resetBook);
     slots.forEach((s, k) => gsap.set(s, { "--filled": k === 0 ? 0 : 1 }));
-    gsap.set([topRef.current, nowRef.current, hintRef.current, introRef.current], { autoAlpha: 0 });
+    gsap.set([topRef.current, nowRef.current, hintRef.current, introRef.current, extraRef.current], { autoAlpha: 0 });
     gsap.set(hintEl, { opacity: 0 });
 
     // ───────── state ─────────
@@ -716,7 +719,7 @@ export function Stage({
       setLive(director!.cur);
       if (at.label !== "end") arm(at.book, Number(at.label.slice(1)));
       pump();
-      gsap.to([topRef.current, nowRef.current, hintRef.current], {
+      gsap.to([topRef.current, nowRef.current, hintRef.current, extraRef.current], {
         autoAlpha: 1,
         duration: 0.9,
         ease: "power1.out",
@@ -942,6 +945,7 @@ export function Stage({
         .to(ink, { opacity: 0, duration: 0.9, ease: "sine.in" }, develop + 0.5)
         .fromTo(e0.sheen, { xPercent: -75 }, { xPercent: -18, duration: 1.6, ease: "power2.inOut" }, develop + 0.7)
         .to(topRef.current, { autoAlpha: 1, duration: 0.9, ease: "power1.out" }, develop + 0.9)
+        .to(extraRef.current, { autoAlpha: 1, duration: 0.9, ease: "power1.out" }, develop + 1.3)
         .to(hintEl, { opacity: 1, duration: 0.9 }, develop + 1.2)
         .add(() => {
           idle = gsap
@@ -1149,6 +1153,11 @@ export function Stage({
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />
           <ProjectPopup />
+          {/* the tab on the right and the chat on the left arrive with the rest of the controls */}
+          <div ref={extraRef} className="extras">
+            <SideDock />
+            <ChatBot />
+          </div>
         </div>
         <Cursor />
       </div>

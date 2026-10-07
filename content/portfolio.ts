@@ -11,6 +11,8 @@ export const profile = {
   lastName: "Singh",
   monogram: "PS",
   role: "AI Engineer",
+  /** What the role line rolls over to when it is hovered. */
+  altRole: "Software Engineer",
   tagline: "I build agentic AI systems that show their evidence, on backends that hold up in production.",
   location: "Chennai, India",
   email: "prabhavkeshwar@gmail.com",

@@ -3,6 +3,7 @@
 import { highlights, principles, profile, skills } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
 import { PALETTE } from "@/content/palette";
+import { RollText } from "@/components/ui/RollText";
 import { CoverTitle, NextPage, Opener, QuotePage, TextLink, fit, useNav } from "./primitives";
 
 function Title() {
@@ -20,7 +21,7 @@ function Title() {
           <em>{profile.lastName}</em>
         </h1>
         <div className="t-meta mt-[7cqw]">
-          {profile.role} — {profile.location}
+          <RollText from={profile.role} to={profile.altRole} /> — {profile.location}
         </div>
       </div>
     </div>
