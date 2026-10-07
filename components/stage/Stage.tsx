@@ -186,7 +186,10 @@ export function Stage({
     // ───────── volumes that have not been opened yet are still drawings on the shelf ─────────
     const inkOf = new Map<number, SVGGElement>();
     let shelfPaths: SVGPathElement[][] = [];
+    // the drawings stay out of sight while the scene boots; the intro (or skipping it) shows them
+    let shelfInkOn = skipIntro;
     const drawShelfInk = () => {
+      shelfInk.style.visibility = shelfInkOn ? "" : "hidden";
       shelfInk.setAttribute("viewBox", `0 0 ${stageEl.offsetWidth} ${stageEl.offsetHeight}`);
       shelfInk.replaceChildren();
       inkOf.clear();
@@ -740,6 +743,9 @@ export function Stage({
         plank: of(rootEl, ".plank"),
         shelfPaths,
       });
+      // every stroke is now waiting to be drawn, so the drawings can be uncovered
+      shelfInkOn = true;
+      shelfInk.style.visibility = "";
 
       // the sheet starts to dissolve as the last strokes land, and the ink follows it out
       const develop = Math.max(0.6, sk.duration - 0.3);
