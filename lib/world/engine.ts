@@ -294,7 +294,7 @@ export class WorldEngine {
     list.push({ rect: { x: 0, y: this.H - 60, w: this.W, h: 60 }, pad: 0 });
     if (this.mode === "desktop" && this.W >= 1100) {
       list.push({ rect: { x: this.W - 60, y: this.H / 2 - 110, w: 60, h: 220 }, pad: 0 });
-      list.push({ rect: { x: 0, y: this.H - 190, w: 74, h: 130 }, pad: 0 });
+      list.push({ rect: { x: 0, y: this.H - 200, w: 120, h: 130 }, pad: 0 });
     }
     w.keep = list;
     w.book = this.book;

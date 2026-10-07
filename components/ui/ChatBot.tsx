@@ -1,10 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { profile } from "@/content/portfolio";
-import { asset } from "@/lib/asset";
 import { GREETING, reply } from "@/lib/chat/brain";
 import { gsap } from "@/lib/gsap";
+
+/** The words that go round the button. */
+const RING = "ASK ANYTHING ABOUT ME · ";
+
+/** A speech bubble with a face and a small spark: what a chat assistant looks like. */
+function BotGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 5.5h12a3 3 0 0 1 3 3v6.5a3 3 0 0 1-3 3h-5.2L8.6 21v-3H6a3 3 0 0 1-3-3V8.5a3 3 0 0 1 3-3z" />
+      <circle cx="9.2" cy="11.4" r="1.05" fill="currentColor" stroke="none" />
+      <circle cx="14.8" cy="11.4" r="1.05" fill="currentColor" stroke="none" />
+      <path d="M9.4 14.4c1.5 1.2 3.7 1.2 5.2 0" />
+      <path d="M19.6 0.9l.55 1.55 1.55.55-1.55.55-.55 1.55-.55-1.55-1.55-.55 1.55-.55z" fill="#d4a95f" stroke="none" />
+    </svg>
+  );
+}
 
 type Msg = { id: number; from: "me" | "you"; text: string; typing?: boolean };
 
@@ -27,6 +42,7 @@ export function ChatBot() {
   const field = useRef<HTMLInputElement>(null);
   const fab = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
+  const ring = useId();
 
   const commit = useCallback((m: Msg[], c: string[]) => {
     talk.msgs = m;
@@ -125,33 +141,44 @@ export function ChatBot() {
   return (
     <>
       {!open && (
-        <button
-          ref={fab}
-          type="button"
-          className="chat-fab"
-          aria-label={`Hey, ${profile.firstName} here. Ask anything about me`}
-          aria-haspopup="dialog"
-          data-cursor="open"
-          onClick={() => {
-            talk.open = true;
-            setOpen(true);
-          }}
-        >
-          <span className="chat-fab-dot">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={asset("/logo-plate.png")} alt="" width={80} height={80} draggable={false} />
-          </span>
-          <span className="chat-fab-label" aria-hidden>
-            Hey, {profile.firstName} here. Ask anything about me
-          </span>
-        </button>
+        <div className="chat-fab-wrap">
+          {/* the words, round the edge, turning slowly; the button sits inside the ring */}
+          <svg className="chat-ring" viewBox="-50 -50 100 100" aria-hidden>
+            <defs>
+              <path id={ring} d="M 0,-37 a 37,37 0 1,1 -0.01,0" />
+            </defs>
+            <text>
+              <textPath href={`#${ring}`} textLength="231" lengthAdjust="spacing">
+                {RING}
+              </textPath>
+            </text>
+          </svg>
+          <button
+            ref={fab}
+            type="button"
+            className="chat-fab"
+            aria-label={`Hey, ${profile.firstName} here. Ask anything about me`}
+            aria-haspopup="dialog"
+            data-cursor="open"
+            onClick={() => {
+              talk.open = true;
+              setOpen(true);
+            }}
+          >
+            <span className="chat-fab-dot">
+              <BotGlyph />
+            </span>
+            <span className="chat-fab-label" aria-hidden>
+              Hey, {profile.firstName} here. Ask anything about me
+            </span>
+          </button>
+        </div>
       )}
       {open && (
         <section ref={win} className="chat" role="dialog" aria-label={`Ask about ${profile.firstName}`} data-nodrag data-nowheel>
           <header className="chat-head">
             <span className="chat-avatar">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={asset("/logo-plate.png")} alt="" width={64} height={64} draggable={false} />
+              <BotGlyph />
             </span>
             <span className="chat-who">
               <b>{profile.firstName}</b>
