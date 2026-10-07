@@ -3,9 +3,15 @@
 import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 
 /** Lets page content (links, "back to start") drive the book. */
-export const NavContext = createContext<{ goToBook: (i: number) => void; goToStart: () => void }>({
+export const NavContext = createContext<{
+  goToBook: (i: number) => void;
+  goToStart: () => void;
+  /** Open a volume at a named page (null = its first page). */
+  goTo: (book: number, id: string | null) => void;
+}>({
   goToBook: () => {},
   goToStart: () => {},
+  goTo: () => {},
 });
 export const useNav = () => useContext(NavContext);
 

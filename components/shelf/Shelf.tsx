@@ -26,8 +26,12 @@ export const Shelf = forwardRef<
             className="shelf-slot"
             style={{ "--c": b.palette.accent } as CSSProperties}
             aria-label={`Open ${b.label}`}
+            data-cursor="Open"
             onClick={(e) => pick(e, onPick, i)}
-          />
+          >
+            {/* shows in this volume's colour while the book is out: "you are here" */}
+            <i className="slot-mark" aria-hidden />
+          </button>
         ))}
       </div>
       <div className="plank" />
@@ -38,7 +42,10 @@ export const Shelf = forwardRef<
             type="button"
             data-shelf-label={i}
             className="shelf-label"
-            style={{ "--c": b.palette.accent } as CSSProperties} onClick={(e) => pick(e, onPick, i)}>
+            style={{ "--c": b.palette.accent } as CSSProperties}
+            data-cursor="Open"
+            onClick={(e) => pick(e, onPick, i)}
+          >
             {b.label}
           </button>
         ))}

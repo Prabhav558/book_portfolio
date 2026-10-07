@@ -97,9 +97,9 @@ const blocks: Block[] = [
     tone: true,
     node: <Opener num="03" chapter="III" title="Experience" blurb="Where I have worked, what I owned there, and what changed because of it." />,
   },
-  { id: "timeline", full: true, node: <Timeline /> },
-  ...experience.map((r, i): Block => ({ id: `role-${i}`, full: true, node: <RolePage r={r} index={i} /> })),
-  { id: "education", full: true, node: <Education /> },
+  { id: "timeline", name: "Timeline", full: true, node: <Timeline /> },
+  ...experience.map((r, i): Block => ({ id: `role-${i}`, name: r.company, full: true, node: <RolePage r={r} index={i} /> })),
+  { id: "education", name: "Education", full: true, node: <Education /> },
   { id: "end", full: true, node: <End /> },
 ];
 

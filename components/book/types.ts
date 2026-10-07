@@ -13,6 +13,8 @@ export type Mode = "spread" | "single";
 export type Block = {
   id: string;
   node: ReactNode;
+  /** What this page is called in the index; pages without a name are not listed. */
+  name?: string;
   /** Takes a whole page to itself and lays itself out within it. */
   full?: boolean;
   /** Chapter opener: the page is printed in the volume's cloth colour. */

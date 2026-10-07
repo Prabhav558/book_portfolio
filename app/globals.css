@@ -149,6 +149,16 @@ html.stage-lock body {
   width: 100%;
   height: 100%;
 }
+/* volumes not opened yet: drawings that stay on the shelf after the opening sketch has gone */
+.shelf-ink {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
 .ink-label {
   position: absolute;
   box-sizing: border-box;
@@ -1158,6 +1168,26 @@ html.stage-lock body {
 .shelf-slot[data-filled] {
   pointer-events: auto;
 }
+/* where the open book stood: a short bar in its colour, lying on the ledge — "you are here" */
+.slot-mark {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--c, var(--ink));
+  opacity: 0.9;
+  transform-origin: 50% 50%;
+  transition: transform 0.5s var(--ease-out), opacity 0.4s;
+}
+.shelf-slot[data-filled] .slot-mark {
+  opacity: 0;
+  transform: scaleX(0.2);
+}
+.shelf-slot[data-hover]::after {
+  transform: scale(1.35, 1.5);
+}
 /* contact shadow where a book meets the wood */
 .shelf-slot::after {
   content: "";
@@ -1169,6 +1199,7 @@ html.stage-lock body {
   border-radius: 50%;
   background: radial-gradient(50% 50% at 50% 50%, rgba(40, 32, 22, 0.42), rgba(40, 32, 22, 0));
   opacity: var(--filled, 0);
+  transition: transform 0.45s var(--ease-out);
 }
 .plank {
   position: relative;
@@ -1247,12 +1278,20 @@ html.stage-lock body {
 .brand {
   position: fixed;
   left: 28px;
-  top: 21px;
+  top: 24px;
   font-family: var(--serif);
   font-size: 22px;
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--ink);
+}
+/* the name as it is tooled on the cover: small tracked capitals */
+.brand-long {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
 }
 .brand-short {
   display: none;
@@ -1260,7 +1299,7 @@ html.stage-lock body {
 .tools {
   position: fixed;
   right: 28px;
-  top: 22px;
+  top: 14px;
   display: flex;
   align-items: center;
   gap: 22px;
@@ -1278,6 +1317,37 @@ html.stage-lock body {
 }
 .tool:hover {
   color: var(--ink);
+}
+.tool-sound {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  border-radius: 50%;
+  color: #3f464d;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 1px, rgba(0, 0, 0, 0.03) 1px 2px),
+    linear-gradient(135deg, #f6f8fa 0%, #ccd3d9 36%, #9aa2aa 64%, #dfe4e8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(40, 50, 60, 0.36),
+    0 1px 2px rgba(0, 0, 0, 0.22),
+    0 5px 12px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s var(--ease-out), box-shadow 0.25s, color 0.25s;
+}
+.tool-sound:hover {
+  color: #20252a;
+  transform: translateY(-1px);
+}
+.tool-sound:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(40, 50, 60, 0.36),
+    0 1px 1px rgba(0, 0, 0, 0.2);
+}
+/* the name of the button is in its aria-label */
+.tool-sound-label {
+  display: none;
 }
 .tool-sound > span[aria-hidden] {
   display: inline-flex;
@@ -1314,6 +1384,220 @@ html.stage-lock body {
   50% {
     transform: scaleY(1);
   }
+}
+
+/* ── the index: a library card, pulled out from behind its tab ── */
+.index-tab {
+  position: fixed;
+  top: 0;
+  right: 84px;
+  padding: 17px 15px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: #fbf9f3;
+  border-radius: 0 0 10px 10px;
+  box-shadow:
+    0 1px 2px rgba(40, 32, 22, 0.16),
+    0 6px 16px rgba(40, 32, 22, 0.12);
+  transform: translateY(-5px);
+  transition: transform 0.4s var(--ease-out), color 0.25s;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.index-tab:hover,
+.index-tab[aria-expanded="true"] {
+  transform: translateY(0);
+  color: var(--ink);
+}
+.index-tab:focus-visible {
+  outline-offset: -4px;
+}
+/* (a fixed box is its own stacking layer, so while the card is out its box has to rise above the pager) */
+.tools:has(.index-veil) {
+  z-index: 40;
+}
+.index-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(34, 28, 20, 0.14);
+  pointer-events: auto;
+}
+.index-card {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  width: min(388px, calc(100vw - 32px));
+  max-height: calc(100dvh - 56px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 20px 26px 16px;
+  color: var(--ink);
+  background: var(--paper-grain), #fbf9f3;
+  background-size: 240px 240px, auto;
+  border-radius: 12px;
+  box-shadow:
+    0 2px 4px rgba(40, 32, 22, 0.14),
+    0 26px 64px rgba(40, 32, 22, 0.26);
+  transform-origin: 78% 0;
+}
+.index-card::-webkit-scrollbar {
+  display: none;
+}
+.index-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 12px;
+  /* the red line of an index card, in the colour of the open volume */
+  border-bottom: 1.5px solid var(--vol-accent, var(--ink));
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.index-owner {
+  flex: 1;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+.index-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -8px -9px -8px 0;
+  border-radius: 50%;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.25s, color 0.25s;
+}
+.index-close svg {
+  width: 14px;
+  height: 14px;
+}
+.index-close:hover {
+  background: rgba(21, 21, 21, 0.07);
+  color: var(--ink);
+}
+.index-vols {
+  padding-top: 6px;
+}
+.index-vols > li {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--hair);
+}
+.index-vol {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr auto;
+  align-items: baseline;
+  width: 100%;
+  padding: 4px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.index-roman {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--c);
+}
+.index-title {
+  font-family: var(--serif);
+  font-size: 27px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  transition: transform 0.4s var(--ease-out), color 0.25s;
+}
+.index-vol:hover .index-title,
+.index-vol:focus-visible .index-title {
+  transform: translateX(5px);
+  color: var(--c);
+}
+.index-vol[data-here] .index-title {
+  font-style: italic;
+  color: var(--c);
+}
+.index-pp {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-feature-settings: "tnum";
+  color: var(--ink-3);
+}
+.index-entries {
+  margin: 2px 0 0 2.4rem;
+}
+.index-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 4.5px 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  /* a ruled card: each entry sits on its own feint line */
+  border-bottom: 1px solid rgba(64, 96, 132, 0.12);
+  transition: color 0.2s, transform 0.4s var(--ease-out);
+}
+.index-entries li:last-child .index-entry {
+  border-bottom: 0;
+}
+/* dot leader between the name and its page number */
+.index-entry i {
+  flex: 1;
+  height: 1px;
+  transform: translateY(-3px);
+  background-image: radial-gradient(circle, rgba(21, 21, 21, 0.3) 0.6px, transparent 0.9px);
+  background-size: 5px 1px;
+}
+.index-entry span:last-child {
+  font-size: 11px;
+  font-weight: 500;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.index-entry:hover,
+.index-entry:focus-visible {
+  color: var(--ink);
+  transform: translateX(4px);
+}
+.index-entry[aria-current="page"] {
+  color: var(--c);
+  font-weight: 600;
+}
+.index-entry[aria-current="page"]::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin: 0 1px 0 -14px;
+  border-radius: 50%;
+  background: var(--c);
+  transform: translateY(-2px);
+}
+.index-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  font-size: 13px;
+}
+.index-foot > span {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .pager {
@@ -1439,8 +1723,8 @@ html.stage-lock body {
   top: 16px;
 }
 [data-kind="phone"] .tools {
-  right: 16px;
-  top: 17px;
+  right: 14px;
+  top: 12px;
   gap: 16px;
 }
 [data-kind="phone"] .pager,
@@ -1466,25 +1750,46 @@ html.stage-lock body {
   transform: none;
   font-size: 12px;
 }
-[data-kind="phone"] .now-title,
-[data-kind="phone"] .tool-sound-label {
+[data-kind="phone"] .now-title {
   display: none;
 }
-/* on a phone the ledge takes the top row, so "Index" moves down between the counter and the arrows */
-[data-kind="phone"] .tool-index {
-  position: fixed;
+/* on a phone the ledge takes the top row, so "Index" is a word between the counter and the arrows,
+   and its card comes up from the bottom edge */
+[data-kind="phone"] .index-tab {
+  top: auto;
+  right: auto;
   left: 50%;
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 10px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 2px);
+  padding: 10px 12px;
+  background: none;
+  box-shadow: none;
+  border-radius: 6px;
   transform: translateX(-50%);
   transition: opacity 0.5s, color 0.25s;
 }
-[data-kind="phone"][data-quiet] .tool-index {
+[data-kind="phone"][data-quiet] .index-tab {
   opacity: 0;
   pointer-events: none;
 }
+[data-kind="phone"] .index-card {
+  top: auto;
+  left: 10px;
+  right: 10px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: auto;
+  max-height: 78dvh;
+  transform-origin: 50% 100%;
+}
+[data-kind="phone"] .tool-sound {
+  width: 30px;
+  height: 30px;
+}
+[data-kind="tablet"] .index-tab {
+  right: 72px;
+}
 [data-kind="phone-land"] .pager,
 [data-kind="phone-land"] .hint,
-[data-kind="phone-land"] .tool-index {
+[data-kind="phone-land"] .index-tab {
   display: none;
 }
 [data-kind="phone-land"] .tools {

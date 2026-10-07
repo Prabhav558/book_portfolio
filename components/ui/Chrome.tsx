@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { forwardRef, useEffect, useState } from "react";
 import { profile } from "@/content/portfolio";
 import { sound } from "@/lib/audio";
+import { IndexCard, type IndexVolume, type Where } from "./IndexCard";
 
 function SoundToggle() {
   const [muted, setMuted] = useState(false);
@@ -15,6 +15,7 @@ function SoundToggle() {
     <button
       type="button"
       className="tool tool-sound"
+      data-cursor={muted ? "Sound on" : "Sound off"}
       aria-label={muted ? "Turn sound on" : "Turn sound off"}
       aria-pressed={muted}
       onClick={() => {
@@ -32,8 +33,11 @@ function SoundToggle() {
   );
 }
 
-/** Wordmark on the left, two quiet tools on the right. */
-export const TopBar = forwardRef<HTMLDivElement>(function TopBar(_, ref) {
+/** Wordmark on the left; on the right, the tab of the index card and the sound button. */
+export const TopBar = forwardRef<
+  HTMLDivElement,
+  { volumes: IndexVolume[]; where: () => Where; onGo: (book: number, id: string | null) => void }
+>(function TopBar({ volumes, where, onGo }, ref) {
   return (
     <div ref={ref} className="chrome">
       <div className="brand">
@@ -41,9 +45,7 @@ export const TopBar = forwardRef<HTMLDivElement>(function TopBar(_, ref) {
         <span className="brand-short">{profile.monogram}</span>
       </div>
       <div className="tools">
-        <Link href="/quick" className="tool tool-index">
-          Index
-        </Link>
+        <IndexCard volumes={volumes} where={where} onGo={onGo} />
         <SoundToggle />
       </div>
     </div>

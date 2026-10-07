@@ -10,7 +10,9 @@ import type { Layout } from "@/lib/layout";
 import { createDirector, type Director } from "@/lib/director";
 import { bindInput } from "@/lib/input";
 import { createPeel } from "@/lib/fold";
-import { buildSketch } from "@/lib/sketch";
+import { buildSketch, inkShelfBook } from "@/lib/sketch";
+import { overlay } from "@/lib/overlay";
+import type { Where } from "@/components/ui/IndexCard";
 import type { Ambient } from "@/components/three/ambient";
 import { Book } from "@/components/book/Book";
 import type { Paged } from "@/components/book/Paginator";
@@ -22,6 +24,9 @@ import { BOOKS } from "@/components/pages";
 import { profile } from "@/content/portfolio";
 
 const ROMAN = ["I", "II", "III", "IV"];
+/** Volumes that have been taken down at least once. The rest are still drawings on the shelf.
+ *  (Outside the component, so it survives the scene being rebuilt for a new screen size.) */
+const seen = new Set<number>([0]);
 const BASE_TINT: [number, number, number] = [1, 1, 1];
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
@@ -67,20 +72,41 @@ export function Stage({
   const api = useRef<{
     goToBook: (i: number) => void;
     goToStart: () => void;
+    goTo: (book: number, id: string | null) => void;
     open: () => void;
     skip: () => void;
     step: (d: 1 | -1) => void;
   }>({
     goToBook: () => {},
     goToStart: () => {},
+    goTo: () => {},
     open: () => {},
     skip: () => {},
     step: () => {},
   });
   const nav = useMemo(
-    () => ({ goToBook: (i: number) => api.current.goToBook(i), goToStart: () => api.current.goToStart() }),
+    () => ({
+      goToBook: (i: number) => api.current.goToBook(i),
+      goToStart: () => api.current.goToStart(),
+      goTo: (book: number, id: string | null) => api.current.goTo(book, id),
+    }),
     [],
   );
+  // the index card: every volume, and the named pages in it with the numbers they have on this screen
+  const volumes = useMemo(
+    () =>
+      BOOKS.map((b, k) => ({
+        book: k,
+        roman: ROMAN[k],
+        label: b.label,
+        accent: b.palette.accent,
+        pages: paged[k].pages.length,
+        entries: paged[k].pages.flatMap((pg, i) => pg.blocks.filter((bl) => bl.name).map((bl) => ({ id: bl.id, name: bl.name!, page: i + 1 }))),
+      })),
+    [paged],
+  );
+  const here = useRef<Where>(null);
+  const shelfInkRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const rootEl = root.current!;
@@ -112,6 +138,15 @@ export function Stage({
     const sketchSvg = sketchRef.current!;
     const ink = sketchSvg.parentElement!;
     const camera = cameraRef.current!;
+    const shelfInk = shelfInkRef.current!;
+    const stageEl = rootEl.querySelector<HTMLElement>(".stage")!;
+    /** An element's box inside the scene (whatever the camera is doing). */
+    const sceneRect = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const o = stageEl.getBoundingClientRect();
+      const k = o.width / (stageEl.offsetWidth || o.width);
+      return { x: (r.left - o.left) / k, y: (r.top - o.top) / k, w: r.width / k, h: r.height / k };
+    };
     // how far the shot drops toward the shelf when no book is on the table (none where the shelf stands at the side)
     const camDrop = cfg.current.layout.kind === "phone-land" ? 0 : clamp(cfg.current.layout.h * 0.15, 56, 150);
     let camY = 0;
@@ -145,11 +180,41 @@ export function Stage({
       return [L.cx / L.w, 1 - L.cy / L.h] as const;
     };
 
-    // ───────── shelf hover lift ─────────
+    // ───────── volumes that have not been opened yet are still drawings on the shelf ─────────
+    const inkOf = new Map<number, SVGGElement>();
+    let shelfPaths: SVGPathElement[][] = [];
+    const drawShelfInk = () => {
+      shelfInk.setAttribute("viewBox", `0 0 ${stageEl.offsetWidth} ${stageEl.offsetHeight}`);
+      shelfInk.replaceChildren();
+      inkOf.clear();
+      shelfPaths = [];
+      els.forEach((e, k) => {
+        e.anchor.style.opacity = seen.has(k) ? "" : "0";
+        const cover = e.anchor.querySelector(".cover-front");
+        if (seen.has(k) || !cover) return;
+        const { g, paths } = inkShelfBook(shelfInk, sceneRect(cover));
+        inkOf.set(k, g);
+        shelfPaths.push(paths);
+      });
+    };
+    /** The first time a volume is taken down, its drawing turns into the book. */
+    const develop = (k: number) => {
+      seen.add(k);
+      const g = inkOf.get(k);
+      inkOf.delete(k);
+      gsap.to(els[k].anchor, { opacity: 1, duration: 0.5, ease: "power1.out", clearProps: "opacity" });
+      if (g) gsap.to(g, { opacity: 0, duration: 0.5, ease: "power1.in", onComplete: () => g.remove() });
+    };
+
+    // ───────── shelf hover: the book comes forward a little ─────────
     function lift(k: number, up: boolean) {
       if (up && (!shelved[k] || director?.busy)) return;
-      gsap.to(els[k].body, { y: up ? -els[k].anchor.offsetHeight * 0.08 : 0, duration: 0.45, ease: "power3.out", overwrite: "auto" });
+      const h = els[k].anchor.offsetHeight;
+      gsap.to(els[k].body, { y: up ? -h * 0.085 : 0, scale: up ? 1.07 : 1, duration: 0.45, ease: "power3.out", overwrite: "auto" });
+      const g = inkOf.get(k);
+      if (g) gsap.to(g, { y: up ? -slots[k].offsetHeight * 0.085 : 0, duration: 0.45, ease: "power3.out", overwrite: "auto" });
       shelfLabels[k]?.toggleAttribute("data-hover", up);
+      slots[k]?.toggleAttribute("data-hover", up);
     }
     const hoverOff: (() => void)[] = [];
     [...slots, ...shelfLabels].forEach((el) => {
@@ -215,6 +280,7 @@ export function Stage({
       const t = b.tl.time();
       const last = lastT[k] ?? t;
       lastT[k] = t;
+      if (t > 0.01 && !seen.has(k)) develop(k);
       // teleports (silent resets) never make noise
       if (Math.abs(t - last) < 0.5) {
         for (const m of b.markers) {
@@ -234,6 +300,7 @@ export function Stage({
         b.tl.eventCallback("onUpdate", () => onTick(k));
         applyShelfPose(els[k], slots[k]);
       });
+      drawShelfInk();
     };
 
     // ───────── what the UI says ─────────
@@ -284,6 +351,16 @@ export function Stage({
       const step = Number(s.label.slice(1));
       const page = cfg.current.paged[s.book].pages[els[s.book].mode === "spread" ? 2 * step : step];
       cfg.current.onPosition({ book: s.book, block: page?.blocks[0]?.id ?? null });
+    };
+    /** Where the reader is, for the index card: the named page on show (the right-hand one first). */
+    const locate = (idx: number) => {
+      const s = director!.states[idx];
+      if (s.label === "end") return (here.current = null);
+      const step = Number(s.label.slice(1));
+      const pages = cfg.current.paged[s.book].pages;
+      const shown = els[s.book].mode === "spread" ? [pages[2 * step + 1], pages[2 * step]] : [pages[step]];
+      const named = shown.flatMap((pg) => pg?.blocks ?? []).find((b) => b.name);
+      here.current = { book: s.book, id: named?.id ?? null };
     };
 
     // Copy every leaf's pages into its bending sheet — but only while the scene is at rest,
@@ -395,6 +472,7 @@ export function Stage({
           }
           pump();
           report(idx);
+          locate(idx);
           if (!ready) finishIntro();
         },
       });
@@ -486,7 +564,7 @@ export function Stage({
         step: (d) => void director!.go(d),
         home: () => director!.jump(0),
         end: () => director!.jump(director!.states.length - 1),
-        enabled: () => ready,
+        enabled: () => ready && !overlay.open,
         hit,
         grab,
       });
@@ -528,6 +606,16 @@ export function Stage({
     api.current.skip = () => openBook({ fast: true });
     api.current.goToBook = (i: number) => director?.jump(director.stateOfBook(i));
     api.current.goToStart = () => director?.jump(0);
+    api.current.goTo = (book, id) => {
+      if (!director || !ready) return;
+      let step = 0;
+      if (id) {
+        const at = cfg.current.paged[book].pages.findIndex((pg) => pg.blocks.some((b) => b.id === id));
+        if (at >= 0) step = els[book].mode === "spread" ? Math.floor(at / 2) : at;
+      }
+      const idx = director.states.findIndex((st) => st.book === book && st.label === `s${step}`);
+      if (idx >= 0) director.jump(idx);
+    };
     api.current.step = (d: 1 | -1) => {
       if (ready) director?.go(d);
     };
@@ -550,7 +638,7 @@ export function Stage({
         labels: Array.from(e0.anchor.querySelectorAll<HTMLElement>("[data-cover-title], [data-cover-mark]")),
         clasp: { plate: of(e0.anchor, ".clasp-plate"), strap: of(e0.anchor, ".clasp-strap"), barrel: of(e0.anchor, ".clasp-barrel") },
         plank: of(rootEl, ".plank"),
-        shelfBooks: els.slice(1).flatMap((e) => of(e.anchor, ".cover-front") ?? []),
+        shelfPaths,
       });
 
       // the sheet starts to dissolve as the last strokes land, and the ink follows it out
@@ -730,6 +818,8 @@ export function Stage({
 
           {/* the sheet the opening drawing is made on, and the ink itself (lib/sketch.ts) */}
           <div ref={paperRef} className="sheet" />
+          {/* volumes not yet opened stay on the shelf as drawings */}
+          <svg ref={shelfInkRef} className="shelf-ink" aria-hidden />
           <div className="ink" aria-hidden>
             <svg ref={sketchRef} className="sketch" />
           </div>
@@ -752,7 +842,7 @@ export function Stage({
         </div>
 
         <div className="ui-layer" style={{ pointerEvents: "none" }}>
-          <TopBar ref={topRef} />
+          <TopBar ref={topRef} volumes={volumes} where={() => here.current} onGo={(book, id) => api.current.goTo(book, id)} />
           <Pager ref={nowRef} onPrev={() => api.current.step(-1)} onNext={() => api.current.step(1)} />
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />

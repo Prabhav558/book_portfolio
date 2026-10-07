@@ -175,9 +175,9 @@ const blocks: Block[] = [
     tone: true,
     node: <Opener num="04" chapter="IV" title="Contact" blurb="Hiring, collaborating, or just want to talk shop? I answer every message." />,
   },
-  { id: "reach", full: true, node: <Reach /> },
-  { id: "letter", full: true, node: <Letter /> },
-  { id: "colophon", full: true, node: <Colophon /> },
+  { id: "reach", name: "Write to me", full: true, node: <Reach /> },
+  { id: "letter", name: "A letter", full: true, node: <Letter /> },
+  { id: "colophon", name: "Colophon", full: true, node: <Colophon /> },
 ];
 
 export const contactBook: BookDef = {

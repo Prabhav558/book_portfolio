@@ -177,17 +177,18 @@ const blocks: Block[] = [
     tone: true,
     node: <Opener num="02" chapter="II" title="Projects" blurb={`Selected work${span ? `, ${span}` : ""}. Two in depth, the rest in brief.`} />,
   },
-  { id: "contents", full: true, node: <Contents /> },
+  { id: "contents", name: "Contents", full: true, node: <Contents /> },
   ...featuredProjects.flatMap((p, i): Block[] => [
     { id: `plate-${i}`, full: true, bleed: true, left: true, node: <Plate p={p} index={i} /> },
-    { id: `detail-${i}`, full: true, node: <Detail p={p} index={i} /> },
+    { id: `detail-${i}`, name: p.title, full: true, node: <Detail p={p} index={i} /> },
   ]),
   ...chunk(moreProjects, 3).map((items, i): Block => ({
     id: `more-${i}`,
+    name: i ? undefined : "More work",
     full: true,
     node: <More items={items} from={featuredProjects.length + i * 3} />,
   })),
-  { id: "elsewhere", full: true, node: <Elsewhere /> },
+  { id: "elsewhere", name: "Notes in the margin", full: true, node: <Elsewhere /> },
   { id: "end", full: true, node: <End /> },
 ];
 

@@ -132,17 +132,17 @@ function End() {
 
 const blocks: Block[] = [
   { id: "title", full: true, node: <Title /> },
-  { id: "statement", full: true, node: <Statement /> },
+  { id: "statement", name: "Introduction", full: true, node: <Statement /> },
   {
     id: "opener",
     full: true,
     tone: true,
     node: <Opener num="01" chapter="I" title="About" blurb="Who I am, what I am good at, and how I like to work." />,
   },
-  { id: "story", full: true, node: <Story /> },
-  { id: "glance", full: true, node: <Glance /> },
-  { id: "toolkit", full: true, node: <Toolkit /> },
-  { id: "principles", full: true, node: <Principles /> },
+  { id: "story", name: "About", full: true, node: <Story /> },
+  { id: "glance", name: "At a glance", full: true, node: <Glance /> },
+  { id: "toolkit", name: "Toolkit", full: true, node: <Toolkit /> },
+  { id: "principles", name: "Principles", full: true, node: <Principles /> },
   { id: "end", full: true, node: <End /> },
 ];
 
