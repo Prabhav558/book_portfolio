@@ -14,7 +14,7 @@
   --room: #e7e5e0;
   --room-2: #d8d5cf;
   /* paper & ink */
-  --paper: #f8f6f1;
+  --paper: #f9f5ec;
   --ink: #151515;
   --ink-2: #4b4945;
   --ink-3: #6f6c66; /* 4.8:1 on paper */
@@ -386,6 +386,7 @@ html.stage-lock body {
   transform: translateZ(calc(var(--T) * 0.9)) rotateY(90deg);
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 10%, transparent 90%, rgba(0, 0, 0, 0.18)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0 1px, rgba(0, 0, 0, 0.06) 1px 3px, transparent 3px 5px),
     repeating-linear-gradient(90deg, #fbfaf6 0 1px, #d7d3cb 1px 2px);
 }
 .edge-top {
@@ -409,6 +410,7 @@ html.stage-lock body {
   transform: translateZ(calc(var(--T) * 0.9)) rotateX(-90deg);
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 10%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.5) 0 1px, rgba(0, 0, 0, 0.06) 1px 3px, transparent 3px 7px),
     repeating-linear-gradient(0deg, #f6f4ef 0 1px, #cfcbc3 1px 2px);
 }
 
@@ -457,11 +459,28 @@ html.stage-lock body {
   bottom: 0;
   width: 13%;
   background:
+    /* four raised bands across the binding: a lit upper edge and a shaded lower one */
+    linear-gradient(180deg, transparent 17.2%, rgba(255, 255, 255, 0.34) 17.2% 17.9%, rgba(0, 0, 0, 0.2) 17.9% 18.8%, transparent 18.8%),
+    linear-gradient(180deg, transparent 39.2%, rgba(255, 255, 255, 0.34) 39.2% 39.9%, rgba(0, 0, 0, 0.2) 39.9% 40.8%, transparent 40.8%),
+    linear-gradient(180deg, transparent 59.2%, rgba(255, 255, 255, 0.34) 59.2% 59.9%, rgba(0, 0, 0, 0.2) 59.9% 60.8%, transparent 60.8%),
+    linear-gradient(180deg, transparent 81.2%, rgba(255, 255, 255, 0.34) 81.2% 81.9%, rgba(0, 0, 0, 0.2) 81.9% 82.8%, transparent 82.8%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0, rgba(0, 0, 0, 0) 14%, rgba(255, 255, 255, 0.1) 60%, rgba(0, 0, 0, 0.1) 100%),
     var(--wood),
     var(--oak);
-  background-size: auto, 220px 440px, auto;
+  background-size: auto, auto, auto, auto, auto, 220px 440px, auto;
   box-shadow: 1px 0 0 rgba(255, 255, 255, 0.22), 3px 0 6px rgba(0, 0, 0, 0.16);
+  z-index: 1;
+}
+/* the joint where the board meets the spine is pressed in: a dark line, then a lit lip on the cloth */
+.cover-front::after {
+  content: "";
+  position: absolute;
+  left: 13%;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0, rgba(0, 0, 0, 0.12) 35%, rgba(255, 255, 255, 0.14) 62%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
   z-index: 1;
 }
 .cover-sheen {
@@ -683,11 +702,30 @@ html.stage-lock body {
   position: absolute;
   left: calc(var(--bw) * 0.045);
   top: calc(var(--bh) - var(--o) - 2px);
-  width: calc(var(--bw) * 0.02);
-  height: calc(var(--bh) * 0.032);
+  width: calc(var(--bw) * 0.024);
+  height: calc(var(--bh) * 0.058);
   transform: translateZ(calc(var(--T) * 0.5));
-  background: linear-gradient(90deg, color-mix(in srgb, var(--ribbon) 62%, #000), var(--ribbon) 50%, color-mix(in srgb, var(--ribbon) 78%, #fff));
+  transform-origin: 50% 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0) 14%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ribbon) 62%, #000), var(--ribbon) 50%, color-mix(in srgb, var(--ribbon) 78%, #fff));
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+  /* a silk ribbon is never quite still: it hangs from the head of the spine and drifts */
+  animation: ribbon-sway 7s ease-in-out infinite;
+}
+@keyframes ribbon-sway {
+  0%,
+  100% {
+    rotate: -1.6deg;
+  }
+  50% {
+    rotate: 2.2deg;
+  }
+}
+@media (prefers-reduced-motion: reduce), (hover: none) {
+  .ribbon {
+    animation: none;
+  }
 }
 
 /* ── brushed-steel clasp ── */
