@@ -4,51 +4,49 @@
  */
 
 export const profile = {
-  name: "Alex Rivera",
-  firstName: "Alex",
-  lastName: "Rivera",
-  monogram: "AR",
-  role: "Software Engineer",
-  tagline: "I build interfaces that feel inevitable — fast, considered, and quietly delightful.",
-  location: "Bengaluru, India",
-  email: "hello@alexrivera.dev",
-  availability: "Open to full-time roles from January 2027",
+  name: "Prabhav Singh",
+  firstName: "Prabhav",
+  lastName: "Singh",
+  monogram: "PS",
+  role: "AI Engineer",
+  tagline: "I build agentic AI systems that show their evidence, on backends that hold up in production.",
+  location: "Chennai, India",
+  email: "prabhavkeshwar@gmail.com",
+  availability: "Graduating 2027, open to full-time AI engineering roles",
   resumeUrl: "/resume.pdf",
   about: [
-    "I'm a software engineer who sits at the seam between design and engineering. I care about the details most people never notice — the easing of a transition, the shape of an API, the hundred milliseconds that make something feel instant.",
-    "Over the last four years I've shipped products used by hundreds of thousands of people, led frontend architecture for a fintech platform, and mentored engineers who now lead teams of their own.",
+    "I'm an AI engineer who works on the unglamorous half of LLM products: orchestration, reliability, and the backend that keeps them honest. I build multi-agent systems where a model's output is checked against evidence before anyone trusts it.",
+    "At TalenciaGlobal I architect a LangGraph company-intelligence engine with nine parallel research agents on AWS Bedrock. Before that, at Xenkrypt, I built core modules of a self-hosted SOC platform in FastAPI, PostgreSQL and Go.",
   ],
   facts: [
-    { label: "Based in", value: "Bengaluru, India" },
-    { label: "Focus", value: "Frontend systems & product engineering" },
-    { label: "Currently", value: "Senior Engineer at Northwind" },
+    { label: "Based in", value: "Lucknow · Chennai · Bangalore" },
+    { label: "Focus", value: "Agentic AI & backend systems" },
+    { label: "Currently", value: "Software Development Intern at TalenciaGlobal" },
   ],
 };
 
 export const socials = [
-  { label: "GitHub", handle: "@alexrivera", url: "https://github.com/" },
-  { label: "LinkedIn", handle: "in/alexrivera", url: "https://linkedin.com/" },
-  { label: "X / Twitter", handle: "@alexrivera", url: "https://x.com/" },
-  { label: "Dribbble", handle: "alexrivera", url: "https://dribbble.com/" },
+  { label: "GitHub", handle: "@Prabhav558", url: "https://github.com/Prabhav558" },
+  { label: "LinkedIn", handle: "in/prabhav-singh", url: "https://www.linkedin.com/in/prabhav-singh-7a4285208" },
 ] as const;
 
 export const skills = [
-  { group: "Languages", items: ["TypeScript", "JavaScript", "Python", "Go", "SQL"] },
-  { group: "Frontend", items: ["React", "Next.js", "GSAP", "Three.js", "Tailwind"] },
-  { group: "Backend", items: ["Node.js", "PostgreSQL", "Redis", "GraphQL", "tRPC"] },
-  { group: "Craft", items: ["Design systems", "Motion", "Accessibility", "Performance"] },
+  { group: "Agentic AI", items: ["LangGraph", "LangChain", "MCP", "RAG", "LLM evaluation"] },
+  { group: "Languages", items: ["Python", "Java", "C++", "C", "Rust"] },
+  { group: "Backend", items: ["FastAPI", "REST", "WebSockets", "PostgreSQL", "Redis"] },
+  { group: "Cloud & DevOps", items: ["AWS", "Docker", "Kubernetes", "Nginx", "CI/CD"] },
 ];
 
 export const highlights = [
-  { value: "4+", label: "years shipping production software" },
-  { value: "30+", label: "projects designed & delivered" },
-  { value: "250k", label: "monthly users on work I've built" },
+  { value: "3", label: "AWS certifications, incl. Solutions Architect" },
+  { value: "10", label: "security modules in the SOC platform I helped build" },
+  { value: "9.35", label: "CGPA in B.Tech Computer Science" },
 ];
 
 export const principles = [
-  { title: "Craft is a feature", body: "Users can't name the details, but they always feel them." },
-  { title: "Fast by default", body: "Performance is a design decision, made on day one." },
-  { title: "Clarity over cleverness", body: "Code is read far more often than it is written." },
+  { title: "Evidence over eloquence", body: "A model's answer counts only when it can be checked against what it was shown." },
+  { title: "Deterministic first", body: "Use code for the reasoning you can specify, and the LLM only where you can't." },
+  { title: "Plan for failure", body: "Hallucination, timeouts and bad data are normal inputs, so design for them." },
 ];
 
 export type Project = {
@@ -68,78 +66,75 @@ export type Project = {
 
 export const featuredProjects: Project[] = [
   {
-    title: "Ledgerline",
+    title: "Sentrix",
     year: "2026",
     summary:
-      "A real-time personal finance dashboard that reconciles 12 bank feeds in under a second. Built a virtualised ledger rendering 100k rows at 60fps.",
-    tags: ["Next.js", "tRPC", "PostgreSQL", "WebSockets"],
-    live: "https://example.com",
-    code: "https://github.com/",
+      "A self-hosted, open-source SOC platform unifying ~10 security disciplines (SIEM, IAM, SOAR, GRC and more) behind one API. I built the IAM, Perimeter Security and compliance modules.",
+    tags: ["FastAPI", "Go", "PostgreSQL", "Keycloak", "Next.js"],
   },
   {
-    title: "Atlas Notes",
-    year: "2025",
+    title: "SystemLens",
+    year: "2026",
     summary:
-      "An offline-first, collaborative notes app with CRDT sync and a custom rich-text engine. Featured on Product Hunt's top 5 of the day.",
-    tags: ["React", "Yjs", "IndexedDB", "Rust/WASM"],
-    live: "https://example.com",
-    code: "https://github.com/",
+      "A local AI ops agent that watches Docker Compose logs and returns evidence-grounded root-cause findings. A rule-based correlation engine does the reasoning, and the LLM only ranks and explains.",
+    tags: ["Python", "asyncio", "Ollama", "Groq", "Docker"],
+    code: "https://github.com/Prabhav558/SystemLens",
   },
 ];
 
 export const moreProjects: Project[] = [
   {
-    title: "Kiln",
+    title: "SafePath",
     year: "2025",
-    summary: "Design-token compiler that outputs CSS, iOS and Android themes from one source.",
-    tags: ["TypeScript", "CLI"],
-    code: "https://github.com/",
+    summary: "Flutter safety app that scores routes against local crime data, with one-tap and voice SOS.",
+    tags: ["Flutter", "Dart", "Python"],
   },
   {
-    title: "Murmur",
+    title: "FaceLock",
+    year: "2025",
+    summary: "Real-time face detection and a smart door lock built on OpenCV.",
+    tags: ["Python", "OpenCV"],
+    code: "https://github.com/Prabhav558/FaceLock",
+  },
+  {
+    title: "Moodify",
+    year: "2025",
+    summary: "Music recommendation system that picks songs from how you feel.",
+    tags: ["TypeScript"],
+    code: "https://github.com/Prabhav558/Moodify",
+  },
+  {
+    title: "Attendix",
+    year: "2025",
+    summary: "A Rust attendance system built for a hackathon.",
+    tags: ["Rust"],
+    code: "https://github.com/Prabhav558/Attendix-tgl",
+  },
+  {
+    title: "RAG",
+    year: "2025",
+    summary: "Retrieval-augmented generation experiments in Python.",
+    tags: ["Python", "RAG"],
+    code: "https://github.com/Prabhav558/RAG",
+  },
+  {
+    title: "Disease Classifier",
     year: "2024",
-    summary: "Voice-memo transcription with speaker diarisation and searchable timelines.",
-    tags: ["Python", "Whisper", "FastAPI"],
-    live: "https://example.com",
-  },
-  {
-    title: "Paperplane",
-    year: "2024",
-    summary: "A tiny, typed email-templating library — 2kB, zero dependencies.",
-    tags: ["TypeScript", "OSS"],
-    code: "https://github.com/",
-  },
-  {
-    title: "Orbit UI",
-    year: "2023",
-    summary: "Accessible headless component kit used across four internal products.",
-    tags: ["React", "a11y", "Storybook"],
-    code: "https://github.com/",
-  },
-  {
-    title: "Tidepool",
-    year: "2023",
-    summary: "Ocean-data visualisation built with WebGL for a marine research lab.",
-    tags: ["Three.js", "D3"],
-    live: "https://example.com",
-  },
-  {
-    title: "Brightside",
-    year: "2022",
-    summary: "Hackathon-winning mental-health journaling app with mood analytics.",
-    tags: ["React Native", "Firebase"],
+    summary: "Machine-learning classifier for disease prediction.",
+    tags: ["Python", "ML"],
+    code: "https://github.com/Prabhav558/disease-classifier",
   },
 ];
 
 export const techStack = [
-  "TypeScript", "React", "Next.js", "Node.js", "GSAP", "Three.js",
-  "PostgreSQL", "Redis", "GraphQL", "Docker", "AWS", "Figma",
+  "Python", "LangGraph", "FastAPI", "Go", "Rust", "PostgreSQL",
+  "Redis", "AWS Bedrock", "Docker", "Kubernetes", "Next.js", "Keycloak",
 ];
 
 export const extraHighlights = [
-  { title: "Open source", body: "Maintainer of two libraries with 3.2k combined GitHub stars." },
-  { title: "Writing", body: "Essays on motion design and frontend performance, read by 40k+." },
-  { title: "Speaking", body: "Talks at React India and JSConf Asia on scroll-driven animation." },
+  { title: "Hackathons", body: "Honorable Mention at MozoHack and Special Mention at DAYZERO, both April 2025." },
+  { title: "Certified", body: "AWS Solutions Architect Associate, AI Practitioner and Cloud Practitioner, all in 2026." },
+  { title: "Languages", body: "English (professional working proficiency) and Hindi (native)." },
 ];
 
 export type Role = {
@@ -152,67 +147,47 @@ export type Role = {
 
 export const experience: Role[] = [
   {
-    company: "Northwind",
-    title: "Senior Software Engineer",
-    period: "2024 — Present",
-    location: "Bengaluru",
+    company: "TalenciaGlobal",
+    title: "Software Development Intern",
+    period: "Jul 2026 — Present",
+    location: "Chennai",
     points: [
-      "Lead frontend architecture for a fintech platform serving 250k MAU.",
-      "Cut median page load from 3.1s to 0.9s through a rendering overhaul.",
-      "Built and staffed the design-systems guild across 6 product teams.",
+      "Architected a LangGraph company-intelligence engine: one request fans out to 9 parallel agents on AWS Bedrock to fill a 164-field schema.",
+      "Added a 3-model judge-consensus layer that re-checks low-confidence fields before they reach PostgreSQL, to curb hallucination.",
+      "Built the FastAPI backend with async jobs and RBAC, and merged four role workspaces onto one shared deployment.",
     ],
   },
   {
-    company: "Lumen Labs",
-    title: "Software Engineer",
-    period: "2022 — 2024",
-    location: "Remote",
+    company: "Xenkrypt Technologies",
+    title: "Backend Developer",
+    period: "Dec 2025 — Mar 2026",
+    location: "Chennai",
     points: [
-      "Shipped the realtime collaboration layer for a whiteboard product.",
-      "Owned the WebGL rendering pipeline; 4× faster on low-end devices.",
-      "Mentored 5 junior engineers through their first year.",
-    ],
-  },
-  {
-    company: "Studio Fable",
-    title: "Frontend Developer",
-    period: "2021 — 2022",
-    location: "Mumbai",
-    points: [
-      "Built award-winning marketing sites for global brands.",
-      "Introduced a GSAP motion toolkit reused across 20+ projects.",
-    ],
-  },
-  {
-    company: "Quantum Health",
-    title: "Software Engineering Intern",
-    period: "Summer 2020",
-    location: "Pune",
-    points: [
-      "Prototyped a patient-intake flow that reduced drop-off by 18%.",
-      "Wrote the team's first end-to-end test suite.",
+      "Core contributor to Sentrix, a self-hosted SOC platform unifying 10 security disciplines.",
+      "Owned the GRC module and a risk-engine microservice that derives ISO 27001 compliance from live telemetry.",
+      "Built Perimeter Security with MITRE ATT&CK mapping and its Go endpoint agent, plus the initial Keycloak + Casbin IAM layer.",
     ],
   },
 ];
 
 export const education = {
-  school: "Indian Institute of Technology",
+  school: "SRM Institute of Science and Technology",
   degree: "B.Tech, Computer Science & Engineering",
-  period: "2017 — 2021",
-  notes: ["GPA 8.9 / 10", "Head of the university design & code society"],
+  period: "2023 — 2027",
+  notes: ["CGPA 9.35 / 10", "Kattankulathur, Chennai"],
 };
 
 /** What you're learning right now — shown under Education. */
 export const learning = [
-  { topic: "WebGPU", note: "compute shaders for data-heavy visualisation" },
-  { topic: "Rust", note: "systems programming for the tools I build" },
-  { topic: "Distributed systems", note: "working through DDIA, chapter by chapter" },
+  { topic: "Agent evaluation", note: "measuring multi-agent systems beyond vibes" },
+  { topic: "Rust", note: "systems programming and gRPC services" },
+  { topic: "Kubernetes", note: "running the agent stack in production" },
 ];
 
 export const awards = [
-  { title: "Awwwards Honorable Mention", year: "2023" },
-  { title: "Smart India Hackathon — Winner", year: "2020" },
-  { title: "AWS Certified Developer", year: "2022" },
+  { title: "MozoHack (SRMKZILLA), Honorable Mention", year: "2025" },
+  { title: "DAYZERO (CodeNex), Special Mention", year: "2025" },
+  { title: "AWS Certified Solutions Architect, Associate", year: "2026" },
 ];
 
 /**
