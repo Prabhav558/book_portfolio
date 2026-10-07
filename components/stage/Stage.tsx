@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
 import { sound } from "@/lib/audio";
 import { installTextures } from "@/lib/textures";
-import { applyShelfPose, SHELF_TILT, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
+import { applyShelfPose, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
 import type { RigJob } from "@/lib/curl";
 import type { Layout } from "@/lib/layout";
 import { createDirector, type Director } from "@/lib/director";
@@ -202,21 +202,21 @@ export function Stage({
       const h = els[k].anchor.offsetHeight;
       const { body, shadow } = els[k];
       if (!up && !shelved[k]) {
-        // the book is leaving the shelf: the timeline owns its pose from here, so put the hover down at once
-        gsap.set(body, { y: 0, scale: 1, rotationX: 0, rotationY: SHELF_TILT });
-        gsap.set(shadow, { opacity: 0, y: 0 });
+        // the book is leaving the shelf: the timeline owns its pose from here. (This can arrive late, once the
+        // book is open, so it only puts back what the timeline never touches.)
+        gsap.set(body, { y: 0, scale: 1, rotation: 0 });
+        gsap.set(shadow, { y: 0 });
       } else {
-        // it comes forward, turns a little toward you and throws a shadow on the wall behind
+        // it comes forward, leans a little and throws a shadow on the wall behind
         gsap.to(body, {
           y: up ? -h * 0.085 : 0,
           scale: up ? 1.07 : 1,
-          rotationX: up ? -4 : 0,
-          rotationY: up ? SHELF_TILT * 0.4 : SHELF_TILT,
+          rotation: up ? -2.2 : 0,
           duration: 0.5,
           ease: "power3.out",
           overwrite: "auto",
         });
-        gsap.to(shadow, { opacity: up ? 0.6 : 0, y: up ? h * 0.03 : 0, duration: 0.5, ease: "power3.out", overwrite: "auto" });
+        if (up || shelved[k]) gsap.to(shadow, { opacity: up ? 0.6 : 0, y: up ? h * 0.03 : 0, duration: 0.5, ease: "power3.out", overwrite: "auto" });
       }
       shelfLabels[k]?.toggleAttribute("data-hover", up);
       slots[k]?.toggleAttribute("data-hover", up);
