@@ -67,11 +67,15 @@ const part = (face: Element | null | undefined, cls: string) => face?.querySelec
 
 export function slotPose(a: HTMLElement, slot: HTMLElement) {
   const r = slot.getBoundingClientRect();
+  // measured inside the scene, so a camera that is panned or pulled back does not skew the pose
+  const scene = (a.offsetParent as HTMLElement | null) ?? document.body;
+  const o = scene.getBoundingClientRect();
+  const k = o.width / (scene.offsetWidth || o.width);
   return {
-    x: r.left + r.width / 2 - a.offsetLeft,
-    y: r.top + r.height / 2 - a.offsetTop,
+    x: (r.left - o.left + r.width / 2) / k - a.offsetLeft,
+    y: (r.top - o.top + r.height / 2) / k - a.offsetTop,
     // fit inside the slot whatever this book's own proportions are
-    s: Math.min(r.height / a.offsetHeight, r.width / a.offsetWidth),
+    s: Math.min(r.height / k / a.offsetHeight, r.width / k / a.offsetWidth),
   };
 }
 
@@ -323,6 +327,8 @@ export function buildBook(
   ft(tl, glow, { v: 1 }, { v: 0, duration: R, ease: "sine.inOut" }, t);
   ft(tl, slot, { "--filled": 0 }, { "--filled": 1, duration: 0.25 }, t + R * 0.78);
   ft(tl, e.anchor, { zIndex: 6 }, { zIndex: 1, duration: 0.001 }, t + R);
+  // it lands with a little weight and settles
+  nudge(tl, e.anchor, -1.5, t + R - 0.02);
   flying(false, t + R + 0.3);
   markers.push({ time: t + R * 0.93, fwd: "shelf", back: "shelf" });
   t += R;

@@ -51,6 +51,7 @@ export function Stage({
   const paperRef = useRef<HTMLDivElement>(null);
   const sketchRef = useRef<SVGSVGElement>(null);
   const shelfRef = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<HTMLDivElement>(null);
   const outroRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const nowRef = useRef<HTMLDivElement>(null);
@@ -110,6 +111,10 @@ export function Stage({
     const paper = paperRef.current!;
     const sketchSvg = sketchRef.current!;
     const ink = sketchSvg.parentElement!;
+    const camera = cameraRef.current!;
+    // how far the shot drops toward the shelf when no book is on the table (none where the shelf stands at the side)
+    const camDrop = cfg.current.layout.kind === "phone-land" ? 0 : clamp(cfg.current.layout.h * 0.15, 56, 150);
+    let camY = 0;
     const ui = rootEl.querySelector<HTMLElement>(".ui-layer")!;
 
     // ───────── first look: everything at rest, hidden behind the white page ─────────
@@ -191,6 +196,18 @@ export function Stage({
       });
       const mix = 0.55 / Math.max(1, sw);
       ambient?.setTint(BASE_TINT[0] + tr * mix, BASE_TINT[1] + tg * mix, BASE_TINT[2] + tb * mix);
+
+      // the camera: with a book on the table it looks at the book; as that book goes back the shot
+      // drifts up to the shelf, and it comes down again with the next one. (A pan only — moving a
+      // layer costs nothing, whereas zooming would redraw every surface in the scene.)
+      let present = 0;
+      tls.forEach((b) => (present = Math.max(present, b.glow.v)));
+      const away = 1 - Math.min(1, present);
+      const y = Math.round(camDrop * away * away * (3 - 2 * away));
+      if (y !== camY) {
+        camY = y;
+        camera.style.transform = y ? `translate3d(0,${y}px,0)` : "";
+      }
     };
 
     const onTick = (k: number) => {
@@ -538,10 +555,14 @@ export function Stage({
 
       // the sheet starts to dissolve as the last strokes land, and the ink follows it out
       const develop = Math.max(0.6, sk.duration - 0.3);
+      // the shot starts a little way back and comes in while the book is drawn (everything was
+      // measured with the camera square on, above)
+      gsap.set(camera, { scale: 0.93, willChange: "transform" });
       intro = gsap.timeline({ delay: 0.1 });
       intro
         .to(introRef.current, { autoAlpha: 1, duration: 0.6, ease: "power1.out" }, 0.3)
         .add(sk.tl, 0)
+        .to(camera, { scale: 1, duration: develop + 0.9, ease: "power2.out" }, 0)
         .to(paper, { opacity: 0, duration: 1.4, ease: "sine.inOut" }, develop)
         .to(amb, { intensity: 1, duration: 1.8, ease: "sine.inOut", onUpdate: () => ambient?.setIntensity(amb.intensity) }, develop)
         .to(ink, { opacity: 0, duration: 0.9, ease: "sine.in" }, develop + 0.5)
@@ -559,6 +580,8 @@ export function Stage({
           // invisible by now; hiding (not removing) them avoids a layer teardown mid-animation
           paper.style.visibility = "hidden";
           ink.style.visibility = "hidden";
+          gsap.set(camera, { clearProps: "transform,willChange" });
+          camY = 0;
         });
     };
 
@@ -687,42 +710,45 @@ export function Stage({
         <div className="backdrop" />
         <canvas ref={canvasRef} className="ambient-canvas" aria-hidden />
 
-        <div className="stage">
-          <Shelf ref={shelfRef} books={BOOKS} onPick={(i) => api.current.goToBook(i)} dir={layout.shelf.dir} labels={layout.shelf.labels} />
+        {/* the camera: the whole scene sits inside it, so one transform moves the shot */}
+        <div ref={cameraRef} className="camera">
+          <div className="stage">
+            <Shelf ref={shelfRef} books={BOOKS} onPick={(i) => api.current.goToBook(i)} dir={layout.shelf.dir} labels={layout.shelf.labels} />
 
-          {BOOKS.map((b, i) => (
-            <Book
-              key={b.id}
-              def={b}
-              index={i}
-              box={layout.books[i]}
-              paged={paged[i]}
-              strips={layout.strips}
-              clasp={i === 0 ? <Clasp ref={claspRef} onOpen={() => api.current.open()} /> : undefined}
-            />
-          ))}
+            {BOOKS.map((b, i) => (
+              <Book
+                key={b.id}
+                def={b}
+                index={i}
+                box={layout.books[i]}
+                paged={paged[i]}
+                strips={layout.strips}
+                clasp={i === 0 ? <Clasp ref={claspRef} onOpen={() => api.current.open()} /> : undefined}
+              />
+            ))}
+          </div>
 
-          <div ref={outroRef} className="outro">
-            <div className="outro-inner">
-              <div className="outro-meta">End of the set</div>
-              <h2 className="outro-title mt-5">
-                Thank you <em>for reading.</em>
-              </h2>
-              <div className="outro-links mt-9">
-                <TextLink href={`mailto:${profile.email}`}>{profile.email}</TextLink>
-                <TextLink href={profile.resumeUrl} download>
-                  Résumé
-                </TextLink>
-                <TextLink onClick={() => api.current.goToStart()}>Read again</TextLink>
-              </div>
-            </div>
+          {/* the sheet the opening drawing is made on, and the ink itself (lib/sketch.ts) */}
+          <div ref={paperRef} className="sheet" />
+          <div className="ink" aria-hidden>
+            <svg ref={sketchRef} className="sketch" />
           </div>
         </div>
 
-        {/* the sheet the opening drawing is made on, and the ink itself (lib/sketch.ts) */}
-        <div ref={paperRef} className="sheet" />
-        <div className="ink" aria-hidden>
-          <svg ref={sketchRef} className="sketch" />
+        <div ref={outroRef} className="outro">
+          <div className="outro-inner">
+            <div className="outro-meta">End of the set</div>
+            <h2 className="outro-title mt-5">
+              Thank you <em>for reading.</em>
+            </h2>
+            <div className="outro-links mt-9">
+              <TextLink href={`mailto:${profile.email}`}>{profile.email}</TextLink>
+              <TextLink href={profile.resumeUrl} download>
+                Résumé
+              </TextLink>
+              <TextLink onClick={() => api.current.goToStart()}>Read again</TextLink>
+            </div>
+          </div>
         </div>
 
         <div className="ui-layer" style={{ pointerEvents: "none" }}>
