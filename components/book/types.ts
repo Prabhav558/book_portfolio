@@ -35,6 +35,8 @@ export type BookDef = {
   id: string;
   /** Name on the shelf, e.g. "Projects". */
   label: string;
+  /** One line under its name in the index, e.g. "Selected work". */
+  blurb: string;
   /** Short volume mark, e.g. "Vol. II". */
   volume: string;
   /** This volume's colours (content/palette.ts). */

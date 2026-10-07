@@ -10,6 +10,7 @@ export type IndexVolume = {
   book: number;
   roman: string;
   label: string;
+  blurb: string;
   accent: string;
   pages: number;
   entries: { id: string; name: string; page: number }[];
@@ -76,6 +77,12 @@ export function IndexCard({
       { yPercent: below ? 112 : -112, rotation: below ? 0 : -5 },
       { yPercent: 0, rotation: below ? 0 : -0.8, duration: 0.7, ease: "power3.out" },
     );
+    // the card is pulled out first; its lines then settle onto it one after another
+    gsap.fromTo(
+      card.current.querySelectorAll(".index-head, .index-vols > li, .index-foot"),
+      { opacity: 0, y: below ? 14 : 10 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.07, delay: 0.28, clearProps: "opacity,transform" },
+    );
     // start on the page that is open, so Enter takes you nowhere new and the arrows start from here
     const current = card.current.querySelector<HTMLElement>('[aria-current="page"], [aria-current="true"]');
     (current ?? card.current.querySelector<HTMLElement>("button"))?.focus({ preventScroll: true });
@@ -99,9 +106,18 @@ export function IndexCard({
 
   /** Tab stays on the card while it is out. */
   const trap = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab" || !card.current) return;
+    if (!card.current) return;
     const items = Array.from(card.current.querySelectorAll<HTMLElement>("button, a[href]"));
     if (!items.length) return;
+    // the arrows walk down and up the card, as a finger would run down a printed index
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const at = items.indexOf(document.activeElement as HTMLElement);
+      const next = (at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[next].focus();
+      return;
+    }
+    if (e.key !== "Tab") return;
     const first = items[0];
     const last = items[items.length - 1];
     if (e.shiftKey && document.activeElement === first) {
@@ -159,9 +175,10 @@ export function IndexCard({
                     data-cursor="open"
                     onClick={() => go(v.book, null)}
                   >
-                    <span className="index-roman">{v.roman}</span>
+                    <span className="index-roman">{pad(v.book + 1)}</span>
                     <span className="index-title">{v.label}</span>
                     <span className="index-pp">{v.pages} pp.</span>
+                    <span className="index-blurb">{v.blurb}</span>
                   </button>
                   <ul className="index-entries">
                     {v.entries.map((e) => (

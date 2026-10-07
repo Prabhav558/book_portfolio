@@ -183,6 +183,7 @@ const blocks: Block[] = [
 export const contactBook: BookDef = {
   id: "contact",
   label: "Contact",
+  blurb: "Let's work together",
   volume: "Vol. IV",
   palette: PALETTE.contact,
   cover: <CoverTitle volume="Vol. IV" title="Contact" icon="mail" />,

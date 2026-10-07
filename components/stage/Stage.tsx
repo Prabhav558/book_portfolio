@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
 import { sound } from "@/lib/audio";
 import { installTextures } from "@/lib/textures";
-import { applyShelfPose, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
+import { applyShelfPose, SHELF_TILT, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
 import type { RigJob } from "@/lib/curl";
 import type { Layout } from "@/lib/layout";
 import { createDirector, type Director } from "@/lib/director";
@@ -101,6 +101,7 @@ export function Stage({
         book: k,
         roman: ROMAN[k],
         label: b.label,
+        blurb: b.blurb,
         accent: b.palette.accent,
         pages: paged[k].pages.length,
         entries: paged[k].pages.flatMap((pg, i) => pg.blocks.filter((bl) => bl.name).map((bl) => ({ id: bl.id, name: bl.name!, page: i + 1 }))),
@@ -216,7 +217,24 @@ export function Stage({
     function lift(k: number, up: boolean) {
       if (up && (!shelved[k] || director?.busy)) return;
       const h = els[k].anchor.offsetHeight;
-      gsap.to(els[k].body, { y: up ? -h * 0.085 : 0, scale: up ? 1.07 : 1, duration: 0.45, ease: "power3.out", overwrite: "auto" });
+      const { body, shadow } = els[k];
+      if (!up && !shelved[k]) {
+        // the book is leaving the shelf: the timeline owns its pose from here, so put the hover down at once
+        gsap.set(body, { y: 0, scale: 1, rotationX: 0, rotationY: SHELF_TILT });
+        gsap.set(shadow, { opacity: 0, y: 0 });
+      } else {
+        // it comes forward, turns a little toward you and throws a shadow on the wall behind
+        gsap.to(body, {
+          y: up ? -h * 0.085 : 0,
+          scale: up ? 1.07 : 1,
+          rotationX: up ? -4 : 0,
+          rotationY: up ? SHELF_TILT * 0.4 : SHELF_TILT,
+          duration: 0.5,
+          ease: "power3.out",
+          overwrite: "auto",
+        });
+        gsap.to(shadow, { opacity: up ? 0.6 : 0, y: up ? h * 0.03 : 0, duration: 0.5, ease: "power3.out", overwrite: "auto" });
+      }
       const g = inkOf.get(k);
       if (g) gsap.to(g, { y: up ? -slots[k].offsetHeight * 0.085 : 0, duration: 0.45, ease: "power3.out", overwrite: "auto" });
       shelfLabels[k]?.toggleAttribute("data-hover", up);

@@ -149,6 +149,7 @@ const blocks: Block[] = [
 export const aboutBook: BookDef = {
   id: "about",
   label: "About",
+  blurb: "Introduction, skills, background",
   volume: "Vol. I",
   palette: PALETTE.about,
   cover: <CoverTitle volume="Vol. I" title={profile.name} icon="book" />,

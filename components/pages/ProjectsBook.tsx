@@ -230,6 +230,7 @@ const blocks: Block[] = [
 export const projectsBook: BookDef = {
   id: "projects",
   label: "Projects",
+  blurb: "Selected work",
   volume: "Vol. II",
   palette: PALETTE.projects,
   cover: <CoverTitle volume="Vol. II" title="Projects" icon="grid" />,

@@ -106,6 +106,7 @@ const blocks: Block[] = [
 export const experienceBook: BookDef = {
   id: "experience",
   label: "Experience",
+  blurb: "Career & education",
   volume: "Vol. III",
   palette: PALETTE.experience,
   cover: <CoverTitle volume="Vol. III" title="Experience" icon="timeline" />,
