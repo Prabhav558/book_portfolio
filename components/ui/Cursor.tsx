@@ -57,8 +57,22 @@ export function Cursor() {
       return hint ? set("label", hint) : set("");
     };
 
+    // The scene changes under a pointer that is not moving (a button is clicked away, a page
+    // turns from the keyboard), so after anything that can change it, look again where the pointer rests.
+    let px = -1;
+    let py = -1;
+    const timers: number[] = [];
+    const again = () => {
+      timers.splice(0).forEach((t) => window.clearTimeout(t));
+      for (const ms of [380, 1300, 2600]) {
+        timers.push(window.setTimeout(() => on && px >= 0 && read(document.elementFromPoint(px, py), px, py), ms));
+      }
+    };
+
     const move = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return show(false);
+      px = e.clientX;
+      py = e.clientY;
       node.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0)`;
       // near the right or bottom edge the word comes out on the other side, so it is never cut off
       const fx = e.clientX > window.innerWidth - 120 ? "1" : "0";
@@ -73,14 +87,20 @@ export function Cursor() {
     const up = (e: PointerEvent) => {
       node.dataset.down = "0";
       if (e.pointerType === "mouse") read(e.target, e.clientX, e.clientY);
+      again();
     };
     const leave = () => show(false);
 
     window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerdown", down, { passive: true });
     window.addEventListener("pointerup", up, { passive: true });
+    window.addEventListener("keydown", again);
+    window.addEventListener("wheel", again, { passive: true });
     html.addEventListener("mouseleave", leave);
     return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      window.removeEventListener("keydown", again);
+      window.removeEventListener("wheel", again);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerdown", down);
       window.removeEventListener("pointerup", up);

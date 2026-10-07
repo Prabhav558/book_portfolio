@@ -16,7 +16,7 @@ export const Shelf = forwardRef<
   ref,
 ) {
   return (
-    <div ref={ref} className="shelf" aria-label="Bookshelf" data-dir={dir} data-labels={labels ? "" : undefined}>
+    <div ref={ref} className="shelf" role="navigation" aria-label="Volumes" data-dir={dir} data-labels={labels ? "" : undefined}>
       <div className="shelf-slots">
         {books.map((b, i) => (
           <button
@@ -42,6 +42,9 @@ export const Shelf = forwardRef<
             type="button"
             data-shelf-label={i}
             className="shelf-label"
+            // the book above it is the real button; this is the same action for a mouse
+            tabIndex={-1}
+            aria-hidden
             style={{ "--c": b.palette.accent } as CSSProperties}
             data-cursor="Open"
             onClick={(e) => pick(e, onPick, i)}

@@ -53,6 +53,7 @@ export function TextLink({
     return (
       <a href={href} className={cls} download={download} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
         {children}
+        {external && <span className="sr-only"> (opens in a new tab)</span>}
         {icon}
       </a>
     );
@@ -78,7 +79,9 @@ export function Opener({ num, chapter, title, blurb }: { num: string; chapter: s
         <span>{chapter}</span>
       </div>
       <div>
-        <div className="t-num">{num}</div>
+        <div className="t-num" aria-hidden>
+          {num}
+        </div>
         <h2 className="t-h1 mt-[6cqw]">{title}</h2>
         <p className="t-body mt-[3.5cqw] max-w-[19em]">{blurb}</p>
       </div>

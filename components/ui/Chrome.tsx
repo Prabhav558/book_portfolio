@@ -61,8 +61,8 @@ const Chevron = ({ flip }: { flip?: boolean }) => (
 /** Where you are, and two buttons to move. */
 export const Pager = forwardRef<HTMLDivElement, { onPrev: () => void; onNext: () => void }>(function Pager({ onPrev, onNext }, ref) {
   return (
-    <div ref={ref} className="chrome pager">
-      <div className="now" aria-live="polite">
+    <div ref={ref} className="chrome pager" role="group" aria-label="Pages">
+      <div className="now" aria-hidden>
         <span className="now-dot" />
         <span className="now-text">
           <b data-now-vol>Vol. I</b>

@@ -109,6 +109,7 @@ export function Stage({
   );
   const here = useRef<Where>(null);
   const shelfInkRef = useRef<SVGSVGElement>(null);
+  const sayRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     const rootEl = root.current!;
@@ -317,6 +318,7 @@ export function Stage({
         ui.style.setProperty("--vol-cloth", p.cloth);
         ui.style.setProperty("--vol-ribbon", p.ribbon);
         shelfLabels.forEach((l, k) => l.toggleAttribute("data-now", k === book));
+        slots.forEach((sl, k) => (k === book ? sl.setAttribute("aria-current", "true") : sl.removeAttribute("aria-current")));
       };
       if (instant) return apply();
       gsap.to(nowText, {
@@ -428,12 +430,31 @@ export function Stage({
       if (s.label !== "end") arm(s.book, Number(s.label.slice(1)));
     };
 
-    const clearLive = () => rootEl.querySelectorAll(".face.is-live").forEach((f) => f.classList.remove("is-live"));
+    // Only the pages on show can be reached: every other page is inert — out of the tab order
+    // and not read out — so a keyboard or a screen reader meets the book one spread at a time.
+    rootEl.querySelectorAll<HTMLElement>(".face[data-step]").forEach((f) => (f.inert = true));
+    const clearLive = () =>
+      rootEl.querySelectorAll<HTMLElement>(".face.is-live").forEach((f) => {
+        f.classList.remove("is-live");
+        f.inert = true;
+      });
     const setLive = (idx: number) => {
       clearLive();
       const s = director!.states[idx];
       if (s.label === "end") return;
-      els[s.book].anchor.querySelectorAll(`.face[data-step="${s.label.slice(1)}"]`).forEach((f) => f.classList.add("is-live"));
+      els[s.book].anchor.querySelectorAll<HTMLElement>(`.face[data-step="${s.label.slice(1)}"]`).forEach((f) => {
+        f.classList.add("is-live");
+        f.inert = false;
+      });
+    };
+    /** Say where the reader is now, in words (the counter in the corner is only for the eye). */
+    const say = (idx: number) => {
+      const s = director!.states[idx];
+      if (s.label === "end") return (sayRef.current!.textContent = "End of the set. All four volumes are back on the shelf.");
+      const step = Number(s.label.slice(1));
+      const total = cfg.current.paged[s.book].pages.length;
+      const where = els[s.book].mode === "spread" ? `Pages ${2 * step + 1} and ${2 * step + 2}` : `Page ${step + 1}`;
+      sayRef.current!.textContent = `Volume ${s.book + 1}, ${BOOKS[s.book].label}. ${where} of ${total}.`;
     };
 
     const makeDirector = () =>
@@ -476,6 +497,7 @@ export function Stage({
           pump();
           report(idx);
           locate(idx);
+          say(idx);
           if (!ready) finishIntro();
         },
       });
@@ -669,6 +691,17 @@ export function Stage({
           director!.start(opts.fast ? 1.8 : 1);
         }, 0.5);
     };
+    // the closed book opens from the keyboard too, wherever the focus happens to be
+    const onIntroKey = (ev: KeyboardEvent) => {
+      if (opened || !intro || overlay.open) return;
+      if ((ev.target as HTMLElement | null)?.closest?.("button, a, input, textarea, select")) return;
+      if (["Enter", " ", "ArrowRight", "ArrowDown", "PageDown"].includes(ev.key)) {
+        ev.preventDefault();
+        openBook();
+      }
+    };
+    window.addEventListener("keydown", onIntroKey);
+    undo.push(() => window.removeEventListener("keydown", onIntroKey));
     api.current.open = () => openBook();
     api.current.skip = () => openBook({ fast: true });
     api.current.goToBook = (i: number) => director?.jump(director.stateOfBook(i));
@@ -861,7 +894,12 @@ export function Stage({
 
   return (
     <NavContext.Provider value={nav}>
-      <div ref={root} data-kind={layout.kind} style={sceneVars}>
+      <div ref={root} role="main" aria-label={`${profile.name} — portfolio`} data-kind={layout.kind} style={sceneVars}>
+        {/* first stop for a keyboard: the same content as an ordinary page */}
+        <a href="/quick" className="skip-link">
+          Read it as a plain page
+        </a>
+        <p ref={sayRef} className="sr-only" aria-live="polite" />
         <div className="backdrop" />
         <canvas ref={canvasRef} className="ambient-canvas" aria-hidden />
 

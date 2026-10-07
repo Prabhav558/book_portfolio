@@ -157,7 +157,10 @@ export function Book({
             <div className="leaf-inner">
               <div className="face face--front cover-front">
                 <div className="cover-sheen" />
-                <div className="cover-content">{def.cover}</div>
+                {/* the lettering on a cover is decoration; the shelf button and the pages carry the names */}
+                <div className="cover-content" aria-hidden>
+                  {def.cover}
+                </div>
               </div>
               {spread && (
                 <div className="face face--back cover-back" data-step={0}>
