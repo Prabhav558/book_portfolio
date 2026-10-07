@@ -25,6 +25,26 @@ npm run build && npm start
 | Cover icons | `CoverIcon` in `components/pages/primitives.tsx` |
 | Real sound recordings (optional) | drop files in `public/sounds/` and list them in `SOUND_FILES` in `lib/audio.ts`. Every sound is synthesised by default. |
 
+## The room behind the book
+
+Around the book there is a quiet miniature library: shelves, a desk, a reading corner, a few lamps, and ten small people who wander, stop, read and work. It is one `<canvas>` under the book (`lib/world/`, mounted by `components/world/WorldCanvas.tsx`) with its own loop; React renders it once and never again.
+
+| File | What it does |
+| --- | --- |
+| `lib/world/engine.ts` | the loop, the canvas, the public API: `pause` `resume` `setScene` `setIntensity` `setTimeOfDay` `setBookBounds` `setKeepOut` `notifyBook` |
+| `lib/world/npc.ts` | the people: position, velocity, heading, target, state, walking phase, and a role each (walker, reader, worker, coffee, librarian, explorer) |
+| `lib/world/physics.ts` | friction, walking round the book, people nudging each other |
+| `lib/world/interaction.ts` | desktop only: people look at the pointer, step aside from a rush, are brushed off by a quick pass, and can be picked up and let go with momentum |
+| `lib/world/environment.ts` | the furniture, drawn once into a cache; the lamps' glow is the only thing painted live |
+| `lib/world/timeOfDay.ts` | dawn / morning / day / evening / night from the viewer's own timezone, blended, written to `--world-*` CSS variables |
+| `lib/world/figures.ts` | how a person is drawn |
+
+- **The book is an obstacle.** The stage tells the world where the book is (`setBookBounds`) and when it opens, goes to the shelf or closes (`notifyBook`); somebody looks up when a volume opens. A page turn changes nothing.
+- **It never touches scroll.** Listeners are on the window and hit-test the figures themselves; there is no wheel handler and no scroll container.
+- **Phones** get 3 slow figures and the light; tablets 5. Dragging, pushing, the custom cursor and the physics are for a mouse (`pointer: fine`) only.
+- **Reduced motion:** the calm Quick view is the default; if you opt in to the animated version the room is still.
+- **Try a time of day** with `?worldTime=21:30` on the address. Thresholds are `DEFAULT_TOD` in `timeOfDay.ts`.
+
 ## How it works
 
 - **Layout** (`lib/layout.ts`): one function sizes the scene for the viewport. It picks the device kind (phone, phone landscape, tablet portrait, desktop), gives each book the largest size that fits beside the shelf and controls, and decides single-page or two-page per book. `TABLET_MODES` sets the per-book choice on portrait tablets.
