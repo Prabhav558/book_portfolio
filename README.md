@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Book Portfolio
 
-## Getting Started
+A light, Scandinavian-minimal portfolio told as four cloth-bound volumes on an oak shelf: grey matte covers with an oak spine band, debossed line icons and a brushed-steel clasp. A pencil sketch draws the diary, then the lights come up. Click the clasp to open the first book. After that, every scroll, swipe or arrow key turns one page.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build && npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Make it yours
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| What | Where |
+| --- | --- |
+| All text, links, projects, roles | `content/portfolio.ts` |
+| Résumé download | replace `public/resume.pdf` |
+| Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`. Without a key the form falls back to `mailto:`. |
+| Volume colours (cover, ink, ribbon, light tint) | the `leather`, `accent`, `silk` and `glow` values at the bottom of each file in `components/pages/` |
+| Room, oak and steel | the tokens at the top of `app/globals.css` (`--night`, `--oak`, …) and the `.clasp-*` rules |
+| Cover icons | `CoverIcon` in `components/pages/primitives.tsx` |
+| Real sound recordings (optional) | drop files in `public/sounds/` and list them in `SOUND_FILES` in `lib/audio.ts`. Every sound is synthesised by default. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How it works
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **One timeline per book** (`lib/timeline.ts`): pull off its shelf slot → open → turn pages → close → back into the same slot. Every book starts and ends on the shelf, so nothing ever appears from nowhere.
+- **The director** (`lib/director.ts`) plays those timelines. One input plays one authored transition. Between two books it overlaps the first book's return with the next book leaving its slot. Jumps (rail or shelf) close the current book first. Input is mapped in `lib/input.ts` (wheel with trackpad-inertia rejection, touch swipes, keys).
+- **Bending pages** (`lib/curl.ts`): the turning sheet is a chain of seven hinged strips with per-hinge lighting, so it curls like paper instead of rotating like a card. The next sheet is built during idle time while you read, so the turn itself has nothing to construct.
+- **The intro** (`lib/sketch.ts`, `components/stage/Stage.tsx`): everything heavy (fonts, textures, WebGL shaders, page layers) loads first, hidden behind the white page. A pencil nib then draws the diary and shelf from their real positions, and the light spreads outward from the book. The reveal is compositor-only.
+- **The room** (`components/three/ambient.ts`): one WebGL pass for soft daylight, a window shaft and drifting dust, tinted toward the volume on the table.
+- **Performance rules:** only `transform` and `opacity` are animated; first-time costs (audio device, page layers, the clasp) are paid before they're needed.
+- **Under 768px** books switch to single-page mode. With `prefers-reduced-motion` set, visitors see the calm `/quick` layout instead, with an opt-in to the animated version. `/quick` is always available from the top bar.

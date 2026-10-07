@@ -1,26 +1,1151 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --color-ink: #2b2118;
+  --color-muted: #8b7763;
+  --color-paper: #f5f1e8;
+  --color-ivory: #efe6d6;
+  --color-gold: #c9a25a;
+  --color-night: #120d09;
 }
 
-@media (prefers-color-scheme: dark) {
+/* ───────────────────────── tokens ───────────────────────── */
+
+:root {
+  /* Scandi minimal: a bright room, grey cloth covers, oak and brushed steel */
+  --night: #ecebe8; /* the room */
+  --night-2: #e2e0dc;
+  --ivory: #25272a; /* primary UI text */
+  --ivory-dim: rgba(37, 39, 42, 0.58);
+  --gold: #8c7a62; /* oak accent for UI */
+  --gold-hi: #6e5b43;
+  --oak: #d6b88a;
+  --paper: #faf9f6;
+  --ink: #26272a;
+  --muted: #8a8780;
+  --rule: rgba(38, 39, 42, 0.13);
+
+  /* Book geometry (desktop). Everything else derives from --bh. */
+  --bh: min(82vh, 62vw);
+  --bw: calc(var(--bh) * 0.72);
+  --o: calc(var(--bh) * 0.014); /* board overhang */
+  --T: calc(var(--bh) * 0.034); /* book thickness */
+  --cy: 55.5vh; /* vertical centre of the active book */
+  --slot-h: 8vh;
+  --slot-gap: 4.4vh;
+  --shelf-top: 1.8vh;
+
+  --grain: none; /* set at runtime by lib/textures.ts */
+  --paper-grain: none;
+}
+
+@media (max-width: 767px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bw: min(92vw, calc(74svh * 0.72));
+    --bh: calc(var(--bw) / 0.72);
+    --cy: 55svh;
+    --slot-h: 7.2svh;
+    --slot-gap: 4.5vw;
+    --shelf-top: 1.6svh;
   }
 }
 
+html {
+  background: var(--night);
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--night);
+  color: var(--ivory);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+::selection {
+  background: rgba(140, 122, 98, 0.28);
+}
+
+/* Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+/* ───────────────────────── scene layers ───────────────────────── */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(60% 55% at 50% 56%, #f7f6f4 0%, rgba(247, 246, 244, 0) 70%),
+    radial-gradient(120% 90% at 50% 50%, #ecebe8 0%, #dad8d4 100%);
+}
+.ambient-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+}
+/* white page that the lights burn away from the diary outward.
+   Compositor-only: a ring texture that just scales, with four white panels sliding out beside it. */
+.iris {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+.iris-p {
+  position: absolute;
+  background: #ffffff;
+  will-change: transform;
+}
+.iris-ring {
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  will-change: transform;
+  transform: scale(0.001);
+  background: radial-gradient(circle closest-side, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0) 38%, #ffffff 100%);
+}.sketch {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  contain: layout size;
+}
+.ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+
+/* ───────────────────────── book model ───────────────────────── */
+
+.book-anchor {
+  position: absolute;
+  left: 50%;
+  top: var(--cy);
+  width: var(--bw);
+  height: var(--bh);
+  perspective: calc(var(--bh) * 4);
+  perspective-origin: 50% 40%;
+  visibility: hidden;
+}
+.book-shadow {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 4%;
+  bottom: -7%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(46, 40, 32, 0.5) 0%, rgba(46, 40, 32, 0.24) 45%, rgba(46, 40, 32, 0) 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+.book-body,
+.book,
+.leaves,
+.leaf,
+.leaf-inner {
+  transform-style: preserve-3d;
+}
+.book-body {
+  position: absolute;
+  inset: 0;
+}
+.book {
+  position: absolute;
+  inset: 0;
+}
+.leaves {
+  position: absolute;
+  inset: 0;
+}
+.leaf {
+  position: absolute;
+  left: 0;
+  top: var(--o);
+  width: calc(var(--bw) - var(--o));
+  height: calc(var(--bh) - 2 * var(--o));
+  transform-origin: 0% 50%;
+}
+.leaf.cover {
+  top: 0;
+  width: var(--bw);
+  height: var(--bh);
+}
+.leaf-inner {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(calc(var(--T) * var(--z, 0.5)));
+}
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  pointer-events: none;
+}
+.face.is-live {
+  pointer-events: auto;
+}
+.face--back {
+  transform: rotateY(180deg);
+}
+
+/* boards & edges */
+.board-rear {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px 6px 6px 2px;
+  background: var(--grain), linear-gradient(90deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0) 6%), var(--leather);
+  background-size: 220px 220px, auto, auto;
+}
+.edge {
+  position: absolute;
+  transform-origin: 0 0;
+}
+.edge-spine {
+  left: 0;
+  top: 0;
+  width: var(--T);
+  height: var(--bh);
+  transform-origin: 0 50%;
+  transform: rotateY(-90deg);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3), rgba(255, 255, 255, 0.1) 50%, rgba(0, 0, 0, 0.3)),
+    repeating-linear-gradient(0deg, rgba(120, 84, 48, 0.16) 0 1px, rgba(255, 255, 255, 0) 1px 7px),
+    var(--oak);
+}
+.edge-fore {
+  left: calc(var(--bw) - var(--o));
+  top: var(--o);
+  width: calc(var(--T) * 0.8);
+  height: calc(var(--bh) - 2 * var(--o));
+  transform-origin: 0 50%;
+  transform: translateZ(calc(var(--T) * 0.1)) rotateY(-90deg);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.22)),
+    repeating-linear-gradient(90deg, #efe7d5 0 1px, #d6cbb4 1px 2px);
+}
+.edge-bottom {
+  left: 0;
+  top: calc(var(--bh) - var(--o));
+  width: calc(var(--bw) - var(--o));
+  height: calc(var(--T) * 0.8);
+  transform-origin: 50% 0;
+  transform: translateZ(calc(var(--T) * 0.1)) rotateX(90deg);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.25), transparent 10%),
+    repeating-linear-gradient(0deg, #ece3d0 0 1px, #d1c5ad 1px 2px);
+}
+
+/* leather cover */
+.cover-front {
+  border-radius: 2px 6px 6px 2px;
+  background:
+    var(--grain),
+    radial-gradient(120% 90% at 30% 14%, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(140% 120% at 100% 100%, rgba(30, 30, 30, 0.16), rgba(30, 30, 30, 0) 55%),
+    var(--leather);
+  background-size: 220px 220px, auto, auto, auto;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset -2px 0 0 rgba(255, 255, 255, 0.14),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.1);
+}
+/* the oak band down the spine */
+.cover-front::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 13%;
+  background:
+    var(--grain),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.2) 0, rgba(0, 0, 0, 0) 16%, rgba(255, 255, 255, 0.14) 58%, rgba(0, 0, 0, 0.12) 100%),
+    repeating-linear-gradient(93deg, rgba(122, 84, 46, 0.2) 0 1px, rgba(255, 255, 255, 0) 1px 6px),
+    repeating-linear-gradient(87deg, rgba(255, 255, 255, 0.16) 0 2px, rgba(255, 255, 255, 0) 2px 15px),
+    var(--oak);
+  background-size: 160px 160px, auto, auto, auto, auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2), inset 1px 0 0 rgba(255, 255, 255, 0.25);
+  z-index: 1;
+}.cover-sheen {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg,
+      rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0.22) 50%,
+      rgba(255, 255, 255, 0.1) 54%, rgba(255, 255, 255, 0) 62%);
+  pointer-events: none;
+  will-change: transform;
+}
+.cover-content {
+  position: absolute;
+  inset: 0 0 0 13%;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+/* tooling on a matte cover: debossed, never foil */
+.foil,
+.deboss {
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.cover-icon {
+  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.28)) drop-shadow(0 1px 0 rgba(255, 255, 255, 0.32));
+}
+/* the inside of a hard cover: leather turn-in around a pasted-down sheet */
+.cover-back {
+  border-radius: 6px 2px 2px 6px;
+  background: var(--grain), linear-gradient(270deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0) 5%), var(--leather);
+  background-size: 220px 220px, auto, auto;
+}
+.cover-back > .paper {
+  inset: var(--o) 0 var(--o) var(--o);
+}
+
+/* ───────────────────────── paper ───────────────────────── */
+
+.paper {
+  position: absolute;
+  inset: 0;
+  /* each volume tints its own paper a few percent toward its ink colour */
+  background-color: color-mix(in srgb, var(--paper) 95%, var(--accent, #9a5b2e) 5%);
+  background-image: var(--paper-grain);
+  background-size: 260px 260px;
+  color: var(--ink);
+}
+/* gutter shading toward the spine + soft fore-edge falloff */
+.paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.paper[data-side="R"]::before {
+  background:
+    linear-gradient(90deg, rgba(60, 40, 20, 0.30) 0%, rgba(60, 40, 20, 0.10) 3.5%, rgba(60, 40, 20, 0) 9%),
+    linear-gradient(270deg, rgba(60, 40, 20, 0.07), rgba(60, 40, 20, 0) 4%),
+    radial-gradient(130% 100% at 70% 30%, rgba(255, 252, 244, 0.35), rgba(255, 252, 244, 0) 60%);
+}
+.paper[data-side="L"]::before {
+  background:
+    linear-gradient(270deg, rgba(60, 40, 20, 0.34) 0%, rgba(60, 40, 20, 0.12) 3.5%, rgba(60, 40, 20, 0) 9%),
+    linear-gradient(90deg, rgba(60, 40, 20, 0.07), rgba(60, 40, 20, 0) 4%),
+    radial-gradient(130% 100% at 30% 30%, rgba(255, 252, 244, 0.28), rgba(255, 252, 244, 0) 60%);
+}
+.shade,
+.cast {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+}
+.paper[data-side="R"] .shade {
+  background: linear-gradient(90deg, rgba(30, 18, 8, 0.35), rgba(30, 18, 8, 0.75));
+}
+.paper[data-side="L"] .shade {
+  background: linear-gradient(270deg, rgba(30, 18, 8, 0.35), rgba(30, 18, 8, 0.75));
+}
+.paper[data-side="R"] .cast {
+  background: linear-gradient(90deg, rgba(30, 18, 8, 0.55) 0%, rgba(30, 18, 8, 0.18) 35%, rgba(30, 18, 8, 0) 75%);
+}
+.paper[data-side="L"] .cast {
+  background: linear-gradient(270deg, rgba(30, 18, 8, 0.55) 0%, rgba(30, 18, 8, 0.18) 35%, rgba(30, 18, 8, 0) 75%);
+}
+.leaf-gloss {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 20%, rgba(255, 253, 246, 0.55) 55%, rgba(255, 255, 255, 0) 85%);
+}
+
+/* ───────────────────────── page typography ───────────────────────── */
+/* One cqw-based font size per page; everything inside is in em so the
+   whole layout scales as a unit at any viewport. */
+
+.page-content {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  z-index: 1;
+}
+.pc {
+  position: absolute;
+  inset: 0;
+  font-size: 3.15cqw;
+  padding: 2.6em 2.5em 2.8em;
+  display: flex;
+  flex-direction: column;
+}
+.paper[data-side="R"] .pc {
+  padding-left: 3em;
+}
+.paper[data-side="L"] .pc {
+  padding-right: 3em;
+}
+.pg-runner {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.56em;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 0.9em;
+  margin-bottom: 1.8em;
+  border-bottom: 1px solid var(--rule);
+}
+.pg-folio {
+  position: absolute;
+  bottom: 1.5em;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-playfair), Georgia, serif;
+  font-style: italic;
+  font-size: 0.66em;
+  color: var(--muted);
+}
+.pg-kicker {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6em;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--accent, #8a5a2b);
+}
+.pg-title {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 2.05em;
+  line-height: 1.06;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.pg-h3 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 1.22em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.pg-body {
+  font-size: 0.86em;
+  line-height: 1.62;
+  color: #4a3b2e;
+}
+.pg-small {
+  font-size: 0.7em;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.pg-rule {
+  height: 1px;
+  background: var(--rule);
+  border: 0;
+}
+.pg-ornament {
+  font-family: var(--font-playfair), Georgia, serif;
+  color: var(--accent, #8a5a2b);
+  opacity: 0.7;
+}
+.dropcap::first-letter {
+  float: left;
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 3.6em;
+  line-height: 0.82;
+  padding: 0.06em 0.1em 0 0;
+  color: var(--accent, #8a5a2b);
+}
+.tag {
+  display: inline-block;
+  font-size: 0.6em;
+  letter-spacing: 0.06em;
+  padding: 0.35em 0.75em;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: #5d4b3b;
+  background: rgba(255, 255, 255, 0.35);
+}
+.ink-link {
+  color: var(--accent, #8a5a2b);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: color 0.2s;
+}
+.ink-link:hover {
+  color: var(--ink);
+}
+.btn-ink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.85em 1.4em;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  transition: background-color 0.25s, transform 0.25s;
+}
+.btn-ink:hover {
+  background: var(--accent, #5c3a21);
+}
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.8em 1.3em;
+  border-radius: 999px;
+  border: 1px solid rgba(43, 33, 24, 0.35);
+  color: var(--ink);
+  transition: background-color 0.25s, border-color 0.25s;
+}
+.btn-ghost:hover {
+  background: rgba(43, 33, 24, 0.06);
+  border-color: var(--ink);
+}
+.field {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: max(0.85em, 16px);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(43, 33, 24, 0.28);
+  padding: 0.5em 0;
+  outline: none;
+  transition: border-color 0.25s;
+  border-radius: 0;
+}
+.field::placeholder {
+  color: rgba(139, 119, 99, 0.7);
+}
+.field:focus {
+  border-color: var(--accent, #5c3a21);
+}
+@media (min-width: 768px) {
+  .field {
+    font-size: 0.85em;
+  }
+}
+.plate {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.35em;
+  border: 1px solid rgba(43, 33, 24, 0.14);
+}
+
+/* ───────────────────────── shelf ───────────────────────── */
+
+.shelf {
+  position: absolute;
+  left: 50%;
+  top: var(--shelf-top);
+  transform: translateX(-50%);
+}
+.shelf-slots {
+  display: flex;
+  gap: var(--slot-gap);
+  padding: 0 calc(var(--slot-gap) * 1.1);
+}
+.shelf-slot {
+  position: relative;
+  width: calc(var(--slot-h) * 0.72);
+  height: var(--slot-h);
+}
+.shelf-slot::after {
+  /* contact shadow, revealed when a book lands */
+  content: "";
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  bottom: -6px;
+  height: 14px;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(60, 50, 38, 0.4), rgba(60, 50, 38, 0));
+  opacity: var(--filled, 0);
+}
+.plank {
+  position: relative;
+  height: 12px;
+  margin: 0 -1.2vh;
+  border-radius: 2px;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #ecd8b4 0px, #d9bf92 3px, #bf9f6f 4px, #b08f61 100%);
+  background-size: 180px 180px, auto;
+}
+.plank::after {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 100%;
+  height: 22px;
+  background: linear-gradient(180deg, rgba(60, 50, 38, 0.28), rgba(60, 50, 38, 0));
+  pointer-events: none;
+}
+.shelf-labels {
+  display: flex;
+  gap: var(--slot-gap);
+  padding: 0 calc(var(--slot-gap) * 1.1);
+  margin-top: 10px;
+}
+.shelf-label {
+  width: calc(var(--slot-h) * 0.72);
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ivory-dim);
+  white-space: nowrap;
+  display: flex;
+  justify-content: center;
+}
+
+/* ───────────────────────── reduced motion ───────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ───────────────────────── interaction routing ───────────────────────── */
+
+.book-anchor {
+  pointer-events: none;
+}
+.shelf-slot,
+.shelf-label {
+  pointer-events: none;
+  cursor: pointer;
+}
+.shelf-slot[data-filled],
+.shelf-label[data-filled] {
+  pointer-events: auto;
+}
+.shelf-label {
+  transition: color 0.3s;
+}
+.shelf-label[data-filled] {
+  color: var(--ivory);
+}
+.shelf-label[data-filled]:hover,
+.shelf-label[data-hover],
+.shelf-label[data-now] {
+  color: var(--c, var(--gold-hi));
+}
+
+/* ───────────────────────── intro: outline + clasp ───────────────────────── */
+
+.clasp-pos {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--bw) * -0.03);
+  width: calc(var(--bw) * 0.25);
+  height: calc(var(--bh) * 0.11);
+  margin-top: calc(var(--bh) * -0.055);
+  transform: translateZ(calc(var(--T) + 1.5px));
+  transform-style: preserve-3d;
+}
+.clasp {
+  position: absolute;
+  inset: 0;
+  transform-origin: 100% 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.clasp-face {
+  position: absolute;
+  inset: 0;
+  transform-origin: 100% 50%;
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.clasp:hover .clasp-face,
+.clasp:focus-visible .clasp-face {
+  transform: scale(1.06);
+}
+.clasp-glow {
+  position: absolute;
+  inset: -55% -25%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.3) 55%, rgba(255, 255, 255, 0));
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.clasp:hover .clasp-glow,
+.clasp:focus-visible .clasp-glow {
+  opacity: 1;
+}
+.clasp-strap {
+  position: absolute;
+  left: 22%;
+  right: 3%;
+  top: 17%;
+  bottom: 17%;
+  border-radius: 3px 0 0 3px;
+  background:
+    var(--grain),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.22)),
+    color-mix(in srgb, var(--leather) 78%, #000);  background-size: 160px 160px, auto, auto;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.28);
+}
+.clasp-strap::before {
+  content: "";
+  position: absolute;
+  inset: 3px 0 3px 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-right: 0;
+  border-radius: 2px 0 0 2px;
+}
+.clasp-plate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 33%;
+  border-radius: 7px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 1px, rgba(0, 0, 0, 0.04) 1px 2px),
+    linear-gradient(140deg, #f4f7f9 0%, #c3cbd2 30%, #8b949c 58%, #dde3e8 82%, #98a1a8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(40, 50, 60, 0.45),
+    inset 0 0 0 1px rgba(70, 80, 90, 0.3),
+    0 3px 6px rgba(0, 0, 0, 0.3);
+}
+.clasp-plate::after {
+  /* static specular streak (an infinitely animated, clipped child inside a 3D parent was the most expensive thing on the page) */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.7) 46%, rgba(255, 255, 255, 0) 62%);
+}
+.clasp-rivet {
+  position: absolute;
+  width: 11%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #aab3ba 55%, #5f6870);
+  box-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.5);
+}
+.clasp-keyhole {
+  position: absolute;
+  left: 54%;
+  top: 50%;
+  width: 16%;
+  height: 40%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 50% 30%, #3b4148 0 32%, transparent 34%),
+    linear-gradient(#3b4148, #3b4148) 50% 85% / 30% 50% no-repeat;
+  opacity: 0.85;
+}
+.clasp-barrel {
+  position: absolute;
+  right: -2%;
+  top: 8%;
+  bottom: 8%;
+  width: 8%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #6d757c 0%, #eef2f5 38%, #ffffff 50%, #aab2b9 72%, #5e666d 100%);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ───────────────────────── outro ───────────────────────── */
+
+.outro {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--cy) - 50vh);
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.outro-inner {
+  width: min(560px, 88vw);
+  margin-top: -4vh;
+  pointer-events: auto;
+}
+.rail,
+.rail * {
+  pointer-events: auto;
+}
+.btn-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.85em 1.4em;
+  border-radius: 999px;
+  background: var(--ivory);
+  color: var(--night);
+  transition: background-color 0.25s;
+}
+.btn-light:hover {
+  background: var(--gold-hi);
+}
+.btn-outline-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.8em 1.3em;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 39, 42, 0.3);
+  color: var(--ivory);
+  transition: border-color 0.25s, background-color 0.25s;
+}
+.btn-outline-light:hover {
+  border-color: var(--ivory);
+  background: rgba(37, 39, 42, 0.06);
+}
+
+/* ───────────────────────── UI chrome ───────────────────────── */
+
+.chrome {
+  opacity: 0;
+  visibility: hidden;
+}
+.rail {
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ivory-dim);
+}
+.rail-label {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  transform: translateX(4px);
+  transition: opacity 0.35s, transform 0.35s cubic-bezier(0.2, 0.9, 0.25, 1), color 0.35s;
+}
+.rail-item:hover .rail-label,
+.rail-item[data-active] .rail-label {
+  opacity: 1;
+  transform: none;
+  color: var(--ivory);
+}
+.rail-track {
+  position: relative;
+  width: 2px;
+  height: 44px;
+  border-radius: 2px;
+  background: rgba(37, 39, 42, 0.16);
+  overflow: hidden;
+}
+.rail-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--c, var(--gold));
+  transform-origin: top;
+  transform: scaleY(0);
+}
+@media (max-width: 767px) {
+  .rail {
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 10px;
+  }
+  .rail-item {
+    flex-direction: column-reverse;
+    gap: 6px;
+  }
+  .rail-label {
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+    transform: none;
+  }
+  .rail-track {
+    width: 54px;
+    height: 2px;
+  }
+  .rail-fill {
+    transform-origin: left;
+    transform: scaleX(0);
+    background: var(--c, var(--gold));
+  }
+}
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 39, 42, 0.18);
+  color: var(--ivory);
+  background: rgba(255, 255, 255, 0.55);
+  transition: border-color 0.3s, background-color 0.3s;
+}
+.icon-btn:hover {
+  border-color: rgba(37, 39, 42, 0.5);
+  background: rgba(37, 39, 42, 0.06);
+}
+.pill-link {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ivory-dim);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 39, 42, 0.14);
+  transition: color 0.3s, border-color 0.3s;
+}
+.pill-link:hover {
+  color: var(--ivory);
+  border-color: rgba(37, 39, 42, 0.45);
+}
+
+/* compositor-only loops (no main-thread work while idle) */
+.eq-bar {
+  display: block;
+  width: 2px;
+  height: 14px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: 50% 50%;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  animation: eq 1.1s ease-in-out infinite;
+}
+.eq-bar:nth-child(2) { animation-duration: 1.24s; animation-delay: -0.3s; }
+.eq-bar:nth-child(3) { animation-duration: 0.96s; animation-delay: -0.6s; }
+.eq-bar:nth-child(4) { animation-duration: 1.37s; animation-delay: -0.2s; }
+.eq-bar:nth-child(5) { animation-duration: 1.05s; animation-delay: -0.8s; }
+@keyframes eq {
+  0%, 100% { transform: scaleY(var(--h, 1)); }
+  50% { transform: scaleY(calc(var(--h, 1) * 0.35)); }
+}
+[aria-pressed="true"] .eq-bar {
+  animation: none;
+  transform: scaleY(0.15);
+  opacity: 0.5;
+}
+.wheel-dot {
+  animation: wheel 1.8s ease-in-out infinite;
+}
+@keyframes wheel {
+  0%, 100% { transform: translate(-50%, 0); opacity: 1; }
+  50% { transform: translate(-50%, 8px); opacity: 0.2; }
+}
+
+@media (max-width: 767px) {
+  .shelf-labels {
+    display: none;
+  }
+}
+
+/* focus: visible for keyboards, invisible for pointers */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+:focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.shelf-slot:focus-visible {
+  outline-offset: 6px;
+}
+
+/* ───────────────────────── scroll lock (stage page only) ───────────────────────── */
+
+html.stage-lock,
+html.stage-lock body {
+  overflow: hidden;
+  height: 100%;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* ───────────────────────── bending page (hinged strips) ───────────────────────── */
+
+.book-anchor {
+  --pw: calc(var(--bw) - var(--o));
+  --n: 7;
+}
+.rig {
+  display: none;
+  top: var(--o);
+  width: var(--pw);
+  height: calc(var(--bh) - 2 * var(--o));
+  pointer-events: none;
+}
+.rig.on {
+  display: block;
+}
+.strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--pw) / var(--n));
+  height: 100%;
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+}
+.strip > .strip {
+  left: 100%;
+}
+.sface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% + 0.6px);
+  height: 100%;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.sface--back {
+  transform: rotateY(180deg);
+}
+.spage {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: var(--pw);
+  left: calc(var(--i) * var(--pw) / var(--n) * -1);
+}
+.sshade {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.sshade--a {
+  background: linear-gradient(90deg, #1d1109, rgba(29, 17, 9, 0));
+}
+.sshade--b {
+  background: linear-gradient(270deg, #1d1109, rgba(29, 17, 9, 0));
+}
+
+/* ───────────────────────── silk bookmark ───────────────────────── */
+
+.ribbon {
+  position: absolute;
+  left: calc(var(--bw) * 0.04);
+  top: calc(var(--bh) - var(--o) - 2px);
+  width: calc(var(--bw) * 0.022);
+  height: calc(var(--bh) * 0.07);
+  transform: translateZ(calc(var(--T) * 0.5));
+  transform-origin: 50% 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--silk) 55%, #000), color-mix(in srgb, var(--silk) 88%, #000) 45%, color-mix(in srgb, var(--silk) 70%, #fff));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
+}
+
+/* ───────────────────────── "now reading" ───────────────────────── */
+
+.now {
+  position: fixed;
+  top: 76px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.now-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, var(--gold));
+  box-shadow: 0 0 12px var(--c, var(--gold));
+  transition: background-color 0.6s, box-shadow 0.6s;
+}
+.now-text {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ivory-dim);
+}
+.now-text b {
+  font-weight: 600;
+  color: var(--ivory);
+}
+@media (max-width: 767px) {
+  .now {
+    top: auto;
+    left: 50%;
+    bottom: 54px;
+    transform: translateX(-50%);
+  }
+}
+
+/* short screens: the book fills the height, so the shelf names step aside (the rail names every volume) */
+@media (max-height: 820px) {
+  .shelf-labels {
+    display: none;
+  }
 }
