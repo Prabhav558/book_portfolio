@@ -20,6 +20,9 @@ import { Book } from "@/components/book/Book";
 import type { Paged } from "@/components/book/Paginator";
 import { Clasp } from "@/components/intro/Clasp";
 import { Shelf } from "@/components/shelf/Shelf";
+import { WorldCanvas } from "@/components/world/WorldCanvas";
+import type { WorldEngine } from "@/lib/world/engine";
+import type { Rect } from "@/lib/world/types";
 import { IntroControls, Pager, ScrollHint, TopBar } from "@/components/ui/Chrome";
 import { NavContext, TextLink } from "@/components/pages/primitives";
 import { BOOKS } from "@/components/pages";
@@ -65,6 +68,7 @@ export function Stage({
   const hintRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const claspRef = useRef<HTMLButtonElement>(null);
+  const worldRef = useRef<WorldEngine | null>(null);
 
   const cfg = useRef({ skipIntro, onIntroDone, onPosition, layout, paged, start });
   cfg.current = { skipIntro, onIntroDone, onPosition, layout, paged, start };
@@ -169,6 +173,37 @@ export function Stage({
     const amb = { intensity: skipIntro ? 1 : 0, scroll: 0 };
     let ready = false;
     let opened = false;
+
+    // ───────── the room behind the book (lib/world) ─────────
+    // The book is an obstacle in it; the world is told where the book is and what it is doing, and nothing else.
+    const world = worldRef.current;
+    let noted = -1;
+    const rectOf = (book: number, open: boolean): Rect => {
+      const L = cfg.current.layout;
+      const b = L.books[book];
+      if (!open) return { x: L.cx - b.bw / 2, y: L.cy - b.bh / 2, w: b.bw, h: b.bh };
+      const spread = b.mode === "spread";
+      const halfW = spread ? b.bw * CAMERA_ZOOM : b.bw / 2;
+      const halfH = (b.bh * (spread ? CAMERA_ZOOM : 1)) / 2;
+      return { x: L.cx - halfW, y: L.cy - halfH, w: halfW * 2, h: halfH * 2 };
+    };
+    const shelfRect = (): Rect => {
+      const L = cfg.current.layout;
+      const s = L.shelf;
+      const n = L.books.length;
+      if (s.dir === "col") {
+        const total = n * s.slotH + (n - 1) * s.gap;
+        return { x: 0, y: s.top - total / 2 - 8, w: s.left + s.slotW / 2 + 12, h: total + 16 };
+      }
+      const width = n * s.slotW + (n - 1) * s.gap + 2 * s.gap * 0.9;
+      return { x: s.left - width / 2 - 10, y: 0, w: width + 20, h: s.top + s.slotH + 7 + (s.labels ? 34 : 12) + 8 };
+    };
+    const syncWorld = (instant = false) => {
+      if (!world) return;
+      world.setKeepOut("shelf", shelfRect());
+      const k = director ? director.states[director.cur].book : 0;
+      world.setBookBounds(rectOf(k, opened), instant);
+    };
     let move = { from: 0, to: 0 };
     let hintHidden = false;
     // "quiet" = the intro or the first hint still owns the bottom row (see the phone rules in globals.css)
@@ -489,7 +524,11 @@ export function Stage({
           move = { from: a, to: b };
           peekOff(true);
           clearLive();
-          if (a !== b) setNow(b);
+          if (a !== b) {
+            setNow(b);
+            world?.setBookBounds(rectOf(b, true));
+            world?.notifyBook("shelf");
+          }
           setPage(to);
           gsap.to(amb, {
             scroll: to * 0.5,
@@ -506,6 +545,14 @@ export function Stage({
         },
         onSettle: (idx) => {
           move = { from: director!.states[idx].book, to: director!.states[idx].book };
+          // the room notices a new volume on the table, and when the set is shut again
+          const sb = director!.states[idx];
+          if (sb.label === "end") world?.notifyBook("close");
+          else if (sb.book !== noted) {
+            noted = sb.book;
+            world?.setBookBounds(rectOf(sb.book, true));
+            world?.notifyBook("open");
+          }
           setLive(idx);
           setPage(idx);
           syncUI();
@@ -780,6 +827,9 @@ export function Stage({
         const st = cfg.current.start;
         const idx = st ? director.states.findIndex((x) => x.book === st.book && x.label === `s${st.step}`) : 0;
         director.place(Math.max(0, idx));
+        noted = director.states[director.cur].book;
+        syncWorld(true);
+        world?.resume();
         syncUI();
         finishIntro();
         return;
@@ -814,6 +864,10 @@ export function Stage({
         .add(() => {
           sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
+          // the book is open on the table: the room is told, and somebody looks up
+          noted = 0;
+          syncWorld();
+          world?.notifyBook("open");
         }, t0 + 0.45);
     };
     // the closed book opens from the keyboard too, wherever the focus happens to be
@@ -880,6 +934,8 @@ export function Stage({
         .add(sk.tl, 0)
         .to(camera, { scale: 1, duration: develop + 0.9, ease: "power2.out" }, 0)
         .to(paper, { opacity: 0, duration: 1.4, ease: "sine.inOut" }, develop)
+        // the room behind the book comes to life as the sheet lifts (it stays still while the drawing is made)
+        .add(() => world?.resume(), develop)
         .to(amb, { intensity: 1, duration: 1.8, ease: "sine.inOut", onUpdate: () => ambient?.setIntensity(amb.intensity) }, develop)
         .to(ink, { opacity: 0, duration: 0.9, ease: "sine.in" }, develop + 0.5)
         .fromTo(e0.sheen, { xPercent: -75 }, { xPercent: -18, duration: 1.6, ease: "power2.inOut" }, develop + 0.7)
@@ -922,6 +978,7 @@ export function Stage({
       sound.prepare();
       build();
       director = makeDirector();
+      syncWorld(true);
       // book one starts out of its slot, closed, in the middle of the table
       tls[0].tl.time(tls[0].labels.open, false);
       syncUI();
@@ -971,6 +1028,7 @@ export function Stage({
     };
     // the parent re-lays the scene out (new sizes, same structure) and asks us to re-aim the timelines
     relayout.current = () => {
+      syncWorld();
       ambient?.resize();
       ambient?.setFocus(...focus());
       window.clearTimeout(rz);
@@ -982,6 +1040,7 @@ export function Stage({
 
     return () => {
       disposed = true;
+      world?.pause();
       window.clearTimeout(rz);
       relayout.current = () => {};
       window.removeEventListener("pointermove", onMove);
@@ -1030,6 +1089,8 @@ export function Stage({
         <p ref={sayRef} className="sr-only" aria-live="polite" />
         <div className="backdrop" />
         <canvas ref={canvasRef} className="ambient-canvas" aria-hidden />
+        {/* the ambient canvas paints the whole room's light, so the people stand on top of it */}
+        <WorldCanvas onReady={(w) => (worldRef.current = w)} />
 
         {/* the camera: the whole scene sits inside it, so one transform moves the shot */}
         <div ref={cameraRef} className="camera">

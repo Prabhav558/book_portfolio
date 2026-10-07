@@ -92,6 +92,15 @@ html.stage-lock body {
     radial-gradient(70% 60% at 50% 52%, #f1efeb 0%, rgba(241, 239, 235, 0) 72%),
     linear-gradient(180deg, var(--room) 0%, var(--room-2) 100%);
 }
+/* the room behind the book: under the camera (book, shelf, pages), over the backdrop; it never takes a pointer event */
+.world-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .ambient-canvas {
   position: fixed;
   inset: 0;
@@ -2207,7 +2216,9 @@ html.has-cursor textarea {
 .cursor[data-icon="cross"] svg[data-i="cross"],
 .cursor[data-icon="skip"] svg[data-i="skip"],
 .cursor[data-icon="sound"] svg[data-i="sound"],
-.cursor[data-icon="mute"] svg[data-i="mute"] {
+.cursor[data-icon="mute"] svg[data-i="mute"],
+.cursor[data-icon="hand"] svg[data-i="hand"],
+.cursor[data-icon="fist"] svg[data-i="fist"] {
   display: block;
 }
 /* a lens: over a picture the cursor itself becomes the disc, centred on the pointer */

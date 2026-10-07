@@ -36,6 +36,9 @@ const KINDS: Record<string, { icon: string; shape: Shape }> = {
   skip: { icon: "skip", shape: "badge" },
   "sound-on": { icon: "sound", shape: "badge" },
   "sound-off": { icon: "mute", shape: "badge" },
+  // the people in the room behind the book
+  grab: { icon: "hand", shape: "badge" },
+  grabbing: { icon: "fist", shape: "badge" },
 };
 
 const ICONS: Record<string, ReactNode> = {
@@ -58,6 +61,8 @@ const ICONS: Record<string, ReactNode> = {
   skip: <path d="M3.5 4l4 4-4 4M8.5 4l4 4-4 4" />,
   sound: <path d="M2.8 6.4h2.2L8 4v8L5 9.6H2.8zM10.4 6.1c.9.8.9 3 0 3.8M12.2 4.6c1.7 1.7 1.7 5.1 0 6.8" />,
   mute: <path d="M2.8 6.4h2.2L8 4v8L5 9.6H2.8zM10.6 6.4l3 3.2M13.6 6.4l-3 3.2" />,
+  hand: <path d="M5.2 8.2V4.4a.9.9 0 0 1 1.8 0v3M7 7V3.4a.9.9 0 0 1 1.8 0V7m0-3a.9.9 0 0 1 1.8 0v3.2m0-2a.9.9 0 0 1 1.8 0v3.4c0 2.2-1.4 4-3.6 4H8c-1.4 0-2.3-.6-3.1-1.7L3.2 9.4a.9.9 0 0 1 1.4-1.1z" />,
+  fist: <path d="M4 7.6c0-.7.5-1.2 1.2-1.2h5.6c.7 0 1.2.5 1.2 1.2v2.2c0 1.8-1.4 3.1-3.2 3.1H7.2C5.4 12.9 4 11.6 4 9.8zM6.4 6.4V5M8 6.4V4.6M9.6 6.4V5" />,
 };
 
 export function Cursor() {
@@ -104,7 +109,7 @@ export function Cursor() {
         if (link.matches('a[href^="mailto:"]')) return set("icon", "write");
         return set("ring");
       }
-      const hint = cursorProbe.at?.(x, y);
+      const hint = cursorProbe.at?.(x, y) ?? cursorProbe.world?.(x, y);
       return hint && KINDS[hint] ? set("icon", hint) : set("");
     };
 
@@ -131,10 +136,16 @@ export function Cursor() {
       if (node.dataset.fx !== fx) node.dataset.fx = fx;
       if (node.dataset.fy !== fy) node.dataset.fy = fy;
       show(true);
-      // while a button is held (a page being dragged) it keeps showing what it showed
+      // while a button is held (a page being dragged) it keeps showing what it showed;
+      // somebody being carried is the one thing that changes it
       if (!e.buttons) read(e.target, e.clientX, e.clientY);
+      else if (cursorProbe.held && KINDS[cursorProbe.held]) set("icon", cursorProbe.held);
     };
-    const down = () => (node.dataset.down = "1");
+    const down = () => {
+      node.dataset.down = "1";
+      // the world's press handler runs on the same event; look again once it has said what it took hold of
+      queueMicrotask(() => cursorProbe.held && KINDS[cursorProbe.held] && set("icon", cursorProbe.held));
+    };
     const up = (e: PointerEvent) => {
       node.dataset.down = "0";
       if (e.pointerType === "mouse") read(e.target, e.clientX, e.clientY);
