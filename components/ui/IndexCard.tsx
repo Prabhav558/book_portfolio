@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { profile } from "@/content/portfolio";
+import { audio } from "@/lib/audio";
 import { gsap } from "@/lib/gsap";
 import { overlay } from "@/lib/overlay";
 
@@ -71,6 +72,7 @@ export function IndexCard({
   useEffect(() => {
     if (!open || !card.current) return;
     const below = fromBelow();
+    audio.playPaper();
     gsap.fromTo(veil.current, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.out" });
     gsap.fromTo(
       card.current,

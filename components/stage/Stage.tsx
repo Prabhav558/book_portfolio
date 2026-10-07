@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
-import { sound } from "@/lib/audio";
+import { audio } from "@/lib/audio";
 import { installTextures } from "@/lib/textures";
 import { applyShelfPose, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
 import type { RigJob } from "@/lib/curl";
@@ -348,8 +348,8 @@ export function Stage({
       // teleports (silent resets) never make noise
       if (Math.abs(t - last) < 0.5) {
         for (const m of b.markers) {
-          if (m.fwd && last < m.time && t >= m.time) sound.play(m.fwd);
-          else if (m.back && last > m.time && t <= m.time) sound.play(m.back);
+          if (m.fwd && last < m.time && t >= m.time) audio.cue(m.fwd);
+          else if (m.back && last > m.time && t <= m.time) audio.cue(m.back);
         }
       }
       syncUI();
@@ -784,7 +784,7 @@ export function Stage({
       if (!pull.detent && pull.p > 0.55) {
         pull.detent = true;
         navigator.vibrate?.(8);
-        sound.play("shelf");
+        audio.playMetalClick("detent");
       }
       if (pull.p >= 1) {
         pull = null;
@@ -822,7 +822,7 @@ export function Stage({
     const openBook = (opts: { fast?: boolean; instant?: boolean; pulled?: boolean } = {}) => {
       if (opened || !director) return;
       opened = true;
-      sound.unlock();
+      audio.unlock();
       intro?.progress(1);
       idle?.kill();
       window.removeEventListener("pointermove", onMove);
@@ -844,7 +844,7 @@ export function Stage({
       const reach = clasp.offsetWidth;
       const t0 = opts.pulled ? 0.12 : 0.3;
       const o = gsap.timeline();
-      o.add(() => sound.play("clasp"), opts.pulled ? 0 : 0.04)
+      o.add(() => audio.playMetalClick("unlatch"), opts.pulled ? 0 : 0.04)
         .to(introRef.current, { autoAlpha: 0, duration: 0.4 }, 0)
         .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.9, ease: "power2.out" }, 0)
         .to(clasp, { rotation: 0, duration: 0.1, ease: "power2.out" }, 0)
@@ -867,7 +867,6 @@ export function Stage({
         .to(clasp, { x: -reach * 1.04, duration: 0.42, ease: "power2.in" }, t0 + 1.0)
         .set(clasp.parentElement, { display: "none" }, t0 + 1.5)
         .add(() => {
-          sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
           // the book is open on the table: the room is told, and somebody looks up
           noted = 0;
@@ -981,7 +980,7 @@ export function Stage({
         canvasRef.current!.style.opacity = "1";
       }
       // audio start-up can block for 100ms+: pay for it now, while the page is still blank
-      sound.prepare();
+      audio.prepare();
       build();
       director = makeDirector();
       syncWorld(true);

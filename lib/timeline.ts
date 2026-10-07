@@ -1,6 +1,6 @@
 import { gsap } from "./gsap";
 import type { Mode } from "@/components/book/types";
-import type { SoundName } from "./audio";
+import type { SoundName } from "./audio/config";
 import { applyCurl, castLanding, castUnder, collectBend, createFill, type RigJob } from "./curl";
 
 /**
@@ -189,7 +189,7 @@ export function buildBook(
   ft(tl, e.body, { rotation: 0 }, { rotation: -5, duration: pull * 0.5, ease: "sine.inOut" }, 0);
   ft(tl, e.body, { rotation: -5 }, { rotation: 0, duration: pull * 0.5, ease: "sine.inOut" }, pull * 0.5);
   ft(tl, e.shadow, { opacity: 0 }, { opacity: 1, duration: pull * 0.7, ease: "power1.inOut" }, pull * 0.3);
-  markers.push({ time: pull * 0.05, fwd: "shelf", back: "shelf" });
+  markers.push({ time: pull * 0.05, fwd: "pull", back: "shelf" });
   t = pull;
   labels.open = t;
 

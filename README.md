@@ -25,7 +25,7 @@ npm run build && npm start
 | Typefaces | `app/layout.tsx` (Instrument Serif for display, Instrument Sans for text) |
 | What a page is called in the index | `name` on its block, in the files under `components/pages/` |
 | Cover icons | `CoverIcon` in `components/pages/primitives.tsx` |
-| Real sound recordings (optional) | drop files in `public/sounds/` and list them in `SOUND_FILES` in `lib/audio.ts`. Every sound is synthesised by default. |
+| Sound | levels and the sound list in `lib/audio/config.ts` (`AUDIO_CONFIG`); the sounds themselves are in `lib/audio/synth.ts` (paper, leather, wood, brass), `voices.ts` and `ambience.ts`. All synthesised, no files. |
 
 ## The room behind the book
 
@@ -53,6 +53,18 @@ Around the book there is a quiet miniature library: shelves, a desk, a reading c
 - **Right-hand tab** (`components/ui/SideDock.tsx`): GitHub, LinkedIn, résumé and email, on the right border from 1100 px wide up.
 - **GitHub activity page** (Experience volume, `components/pages/Activity.tsx`): a year of public commits as a heat map in the volume's colour. It reads `content/github.json`, which `node tools/github.mjs` rewrites from your public contribution calendar before every deploy (and nightly), so nothing is fetched in the browser and no token is shipped. Run the script yourself to refresh it locally.
 - **Rolling line** (`components/ui/RollText.tsx`): the role on the cover rolls over to `profile.altRole` on hover, focus or tap.
+
+## Sound
+
+A quiet antique library, never a UI. Everything is made in the browser (`lib/audio/`), so there are no files to ship, and nothing is created until the visitor's first press or key.
+
+- **One `AudioManager`** (`lib/audio/manager.ts`, the `audio` export). Components ask for a thing, never a volume: `playPageTurn()`, `playBookOpen()`, `playBookClose()`, `playMetalClick()`, `playShelfPlacement()`, `playCharacterInteraction()`. Master, effects and ambience are separate dials (defaults `AUDIO_CONFIG`: 0.35 / 0.25 / 0.12), plus an on/off switch, kept in `localStorage`. A limiter sits last.
+- **The sounds:** paper sliding with a little air (page), leather and a soft wooden weight (cover), a thin brass catch muted by cloth (clasp), oak on oak (shelf). Each has several seeded variants, never the same one twice in a row, with small random pitch and level. Every sound is brought to one loudness and capped in peak, has fades at both ends, and is rolled off above ~3 kHz.
+- **Never on scroll.** Sounds hang on the timeline's markers (a page turn, a cover, a shelf), not on wheel events; quick repeats are held apart and a riffle is thinned out.
+- **People** have voices (formant synthesis): "wohoo" when picked up, "woaahh" when pushed, each in their own pitch.
+- **The room** follows the hour (`audio.setAmbience`): daytime a faint room tone, far birds, now and then paper; evening quieter, with wind and crickets; night a very low tone and a little wind.
+- **Reduced motion** starts with sound off; a choice made with the switch is kept. The switch (with a volume panel) is top right.
+- **Checking the sound:** the sounds are plain functions (`render` in `synth.ts`, `measure` in `dsp.ts`), so they can be rendered and measured (peak, loudness, share of 2–6 kHz energy) without a browser.
 
 ## How it works
 

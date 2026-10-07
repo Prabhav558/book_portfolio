@@ -1,3 +1,4 @@
+import { audio } from "../audio";
 import { cursorProbe } from "../cursor";
 import { overlay } from "../overlay";
 import type { NPC, WorldCtx } from "./npc";
@@ -14,6 +15,9 @@ import type { Pointer } from "./types";
  */
 
 type Drag = { npc: NPC; ox: number; oy: number; sx: number; sy: number; t0: number; moved: boolean };
+
+/** Each person has their own voice: a pitch from 105 to 240 Hz, smaller people higher. */
+const pitchOf = (n: NPC) => (105 + ((n.id * 53) % 7) * 21) / n.rel;
 
 export class Interaction {
   readonly pointer: Pointer = { x: -999, y: -999, vx: 0, vy: 0, on: false };
@@ -126,6 +130,7 @@ export class Interaction {
       n.vx = clamp(n.vx + p.vx * k, -700, 700);
       n.vy = clamp(n.vy + p.vy * k * 0.7, -700, 700);
       n.state = "PUSHED";
+      audio.playCharacterInteraction("push", pitchOf(n), n.x / window.innerWidth);
       n.pushCool = 0.35;
       n.react = 0.7;
       n.zone = null;
@@ -148,6 +153,7 @@ export class Interaction {
     n.vx = n.vy = 0;
     this.drag = { npc: n, ox: n.x - e.clientX, oy: n.y - e.clientY, sx: e.clientX, sy: e.clientY, t0: performance.now(), moved: false };
     cursorProbe.held = "grabbing";
+    audio.playCharacterInteraction("grab", pitchOf(n), n.x / window.innerWidth);
     this.wake();
   };
 

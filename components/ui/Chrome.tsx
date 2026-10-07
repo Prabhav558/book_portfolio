@@ -1,36 +1,76 @@
 "use client";
 
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { profile } from "@/content/portfolio";
-import { sound } from "@/lib/audio";
+import { audio, type Settings } from "@/lib/audio";
 import { asset } from "@/lib/asset";
 import { IndexCard, type IndexVolume, type Where } from "./IndexCard";
 
 function SoundToggle() {
-  const [muted, setMuted] = useState(false);
+  const [st, setSt] = useState<Settings>(audio.settings);
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    setMuted(sound.muted);
-    return sound.subscribe(setMuted);
+    setSt(audio.settings);
+    return audio.subscribe(setSt);
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const slider = (label: string, v: number, set: (n: number) => void) => (
+    <label>
+      {label}
+      <input type="range" min={0} max={100} value={Math.round(v * 100)} onChange={(e) => set(+e.target.value / 100)} aria-label={label} />
+    </label>
+  );
   return (
-    <button
-      type="button"
-      className="tool tool-sound"
-      data-cursor={muted ? "sound-on" : "sound-off"}
-      aria-label={muted ? "Turn sound on" : "Turn sound off"}
-      aria-pressed={muted}
-      onClick={() => {
-        sound.unlock();
-        sound.setMuted(!muted);
-      }}
-    >
-      <span aria-hidden>
-        <i />
-        <i />
-        <i />
-      </span>
-      <span className="tool-sound-label">Sound</span>
-    </button>
+    <div className="sound-wrap" ref={wrap} data-nodrag data-nowheel>
+      <button
+        type="button"
+        className="tool tool-sound"
+        data-cursor={st.enabled ? "sound-off" : "sound-on"}
+        aria-label={st.enabled ? "Turn sound off" : "Turn sound on"}
+        aria-pressed={st.enabled}
+        onClick={() => {
+          audio.unlock();
+          audio.setEnabled(!st.enabled);
+        }}
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 8v4h3l4 3.5v-11L6 8z" fill="currentColor" fillOpacity="0.15" />
+          <path className="waves" d="M13 7.5a3.6 3.6 0 0 1 0 5M15.2 5.2a7 7 0 0 1 0 9.6" />
+          <path className="slash" d="M13 7.5l5 5M18 7.5l-5 5" />
+        </svg>
+        <span className="tool-sound-label">{st.enabled ? "Sound on" : "Sound off"}</span>
+      </button>
+      <button type="button" className="tool tool-vol" aria-label="Volume" aria-expanded={open} data-cursor="open" onClick={() => setOpen(!open)}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+          <path d="M2 4.5h12M2 8h12M2 11.5h12" />
+          <circle cx="10.5" cy="4.5" r="1.6" fill="var(--paper)" />
+          <circle cx="5.5" cy="8" r="1.6" fill="var(--paper)" />
+          <circle cx="9.5" cy="11.5" r="1.6" fill="var(--paper)" />
+        </svg>
+      </button>
+      {open && (
+        <div className="vol-pop" role="group" aria-label="Sound levels">
+          <h2>Sound</h2>
+          {slider("Master", st.master, (n) => audio.setMasterVolume(n))}
+          {slider("Effects", st.sfx, (n) => audio.setSfxVolume(n))}
+          {slider("Ambience", st.ambient, (n) => audio.setAmbientVolume(n))}
+          <p>Page turns, leather, brass and wood; a faint room and the hour outside.{st.enabled ? "" : " Sound is off."}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

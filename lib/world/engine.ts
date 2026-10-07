@@ -1,4 +1,5 @@
 import { drawLamps, drawStatic, layoutScene, type Layout } from "./environment";
+import { audio } from "../audio";
 import { drawFigure } from "./figures";
 import { Interaction } from "./interaction";
 import { makeNPCs, pickTarget, stepNPC, type NPC, type WorldCtx } from "./npc";
@@ -99,7 +100,9 @@ export class WorldEngine {
     this.inter = new Interaction(this.world, () => this.wake());
     this.world.pointer = this.inter.pointer;
     this.resize();
+    audio.setAmbience(this.tod.cur.period);
     this.offTod = this.tod.onChange(() => {
+      audio.setAmbience(this.tod.cur.period);
       this.envDirty = true;
       if (this.reduced || this.paused) this.drawOnce();
     });
