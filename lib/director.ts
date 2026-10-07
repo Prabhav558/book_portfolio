@@ -32,7 +32,6 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
 
   let cur = 0;
   let crossing = false;
-  let queued: 1 | -1 | 0 = 0;
   let scrubbing = false;
   const active = new Map<number, gsap.core.Tween>();
 
@@ -41,11 +40,6 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
   const settle = () => {
     crossing = false;
     hooks.onSettle(cur);
-    if (queued) {
-      const q = queued;
-      queued = 0;
-      go(q);
-    }
   };
 
   function drive(book: number, to: number, rate: number, delay = 0, then?: () => void) {
@@ -128,8 +122,8 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
     const next = cur + dir;
     if (scrubbing || next < 0 || next >= states.length) return false;
     if (crossing) {
-      // a second flick during a long handoff speeds it up and queues one more step
-      queued = dir;
+      // a second flick during a long handoff only hurries it along: replaying it as another step
+      // would skip the first page of the book that is arriving
       active.forEach((tw) => void tw.timeScale(1.8));
       return true;
     }
@@ -195,7 +189,6 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
       active.forEach((tw) => void tw.kill());
       active.clear();
       crossing = false;
-      queued = 0;
       cur = Math.min(states.length - 1, Math.max(0, idx));
       const st = states[cur];
       books.forEach((bk, k) => bk.tl.time(k === st.book ? bk.labels[st.label] : 0, false));
@@ -207,7 +200,6 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
       active.forEach((tw) => void tw.kill());
       active.clear();
       crossing = false;
-      queued = 0;
       books = next;
       build();
     },
