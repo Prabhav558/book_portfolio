@@ -12,35 +12,102 @@ const years = all.map((p) => Number(p.year)).filter(Boolean);
 const span = years.length ? `${Math.min(...years)}–${Math.max(...years)}` : "";
 
 /**
- * Left-hand page of a featured project. Shows the project's screenshot when `image` is set;
- * until then, a typographic plate in the volume's tint.
+ * Left-hand page of a featured project: its two pictures, stepped down the page. Until
+ * `images` is set, tinted frames in the volume's colours stand in for them.
  */
-function Plate({ p, index }: { p: Project; index: number }) {
-  // plates stay inside the volume's colour: its tint and its endpaper, turn about
-  const style = {
-    "--plate": index % 2 ? "var(--endpaper)" : "var(--tint)",
-    "--plate-ink": "var(--accent)",
-  } as CSSProperties;
+function Figures({ p, index }: { p: Project; index: number }) {
+  const shots = p.images ?? [];
   return (
-    <div className="plate" style={style}>
-      {p.image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={p.image} alt={`${p.title} — screenshot`} loading="lazy" />
-      ) : (
-        <span className="plate-letter" aria-hidden>
-          {p.title.charAt(0)}
-        </span>
-      )}
-      <div className="plate-cap">
-        <span className="t-meta">Fig. {pad(index + 1)}</span>
-        <span className="t-meta">
-          {p.title}, {p.year}
-        </span>
+    <div className="flex h-full flex-col">
+      <div className="t-meta flex justify-between">
+        <span>Fig. {pad(index + 1)}</span>
+        <span>{p.title}</span>
+      </div>
+      <div className="figs">
+        {[0, 1].map((k) => (
+          <figure key={k} className={`fig fig--${k ? "b" : "a"}`} data-cursor="view">
+            <div className="fig-frame" style={{ "--plate": k ? "var(--endpaper)" : "var(--tint)" } as CSSProperties}>
+              {shots[k] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shots[k]} alt={`${p.title} — view ${k + 1}`} loading="lazy" />
+              ) : (
+                <span className="fig-mark" aria-hidden>
+                  {k ? p.year : p.title.charAt(0)}
+                </span>
+              )}
+            </div>
+            <figcaption className="t-meta">
+              {pad(index + 1)}
+              {k ? "b" : "a"}
+            </figcaption>
+          </figure>
+        ))}
       </div>
     </div>
   );
 }
 
+/** "ledgerline.app", "github.com/alex/ledgerline" — an address as you would say it. */
+const address = (url: string) => {
+  try {
+    const u = new URL(url);
+    return (u.host.replace(/^www\./, "") + u.pathname).replace(/\/$/, "");
+  } catch {
+    return url;
+  }
+};
+
+/** Right-hand page: the name, what it is, then year, tech and where to find it. */
+function Detail({ p, index }: { p: Project; index: number }) {
+  const row = "grid grid-cols-[5.6em_1fr] items-baseline gap-[1em]";
+  return (
+    <div className="flex h-full flex-col justify-between">
+      <div className="t-meta flex justify-between">
+        <span>Project</span>
+        <span>
+          {pad(index + 1)} / {pad(featuredProjects.length)}
+        </span>
+      </div>
+      <div>
+        <h3 className="t-h1">{p.title}</h3>
+        <div className="t-meta mt-[6.5cqw]">About</div>
+        <p className="t-lede mt-[2cqw]">{p.summary}</p>
+      </div>
+      <dl className="rows rows--tight">
+        <div className={row}>
+          <dt className="t-meta">Year</dt>
+          <dd className="text-[0.95em]">{p.year}</dd>
+        </div>
+        <div className={row}>
+          <dt className="t-meta">Tech</dt>
+          <dd className="text-[0.95em]">{p.tags.join(", ")}</dd>
+        </div>
+        {p.live && (
+          <div className={row}>
+            <dt className="t-meta">Website</dt>
+            <dd className="text-[0.95em]">
+              <TextLink href={p.live} external>
+                {address(p.live)}
+              </TextLink>
+            </dd>
+          </div>
+        )}
+        {p.code && (
+          <div className={row}>
+            <dt className="t-meta">Source</dt>
+            <dd className="text-[0.95em]">
+              <TextLink href={p.code} external>
+                {address(p.code)}
+              </TextLink>
+            </dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  );
+}
+
+/** Links for the shorter entries further on. */
 function Links({ p }: { p: Project }) {
   if (!p.live && !p.code) return null;
   return (
@@ -56,38 +123,6 @@ function Links({ p }: { p: Project }) {
         </TextLink>
       )}
     </span>
-  );
-}
-
-function Detail({ p, index }: { p: Project; index: number }) {
-  return (
-    <div className="flex h-full flex-col justify-between">
-      <div className="t-meta flex justify-between">
-        <span>Featured</span>
-        <span>
-          {pad(index + 1)} / {pad(featuredProjects.length)}
-        </span>
-      </div>
-      <div>
-        <h3 className="t-h1">{p.title}</h3>
-        <p className="t-lede mt-[5.5cqw]">{p.summary}</p>
-      </div>
-      <div>
-        <dl className="rows rows--tight">
-          <div className="grid grid-cols-[5.6em_1fr] items-baseline gap-[1em]">
-            <dt className="t-meta">Year</dt>
-            <dd className="text-[0.95em]">{p.year}</dd>
-          </div>
-          <div className="grid grid-cols-[5.6em_1fr] items-baseline gap-[1em]">
-            <dt className="t-meta">Built with</dt>
-            <dd className="text-[0.95em]">{p.tags.join(", ")}</dd>
-          </div>
-        </dl>
-        <div className="mt-[1.3em] text-[0.95em]">
-          <Links p={p} />
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -179,7 +214,7 @@ const blocks: Block[] = [
   },
   { id: "contents", name: "Contents", full: true, node: <Contents /> },
   ...featuredProjects.flatMap((p, i): Block[] => [
-    { id: `plate-${i}`, full: true, bleed: true, left: true, node: <Plate p={p} index={i} /> },
+    { id: `figures-${i}`, full: true, left: true, node: <Figures p={p} index={i} /> },
     { id: `detail-${i}`, name: p.title, full: true, node: <Detail p={p} index={i} /> },
   ]),
   ...chunk(moreProjects, 3).map((items, i): Block => ({

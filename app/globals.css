@@ -1081,16 +1081,6 @@ html.stage-lock body {
   transform: translateX(0.32em);
   color: var(--accent);
 }
-.plate img,
-.plate-letter {
-  transition: transform 1.1s var(--ease-out);
-}
-.plate:hover img {
-  transform: scale(1.035);
-}
-.plate:hover .plate-letter {
-  transform: translate(1.2%, -1.2%);
-}
 .btn:active {
   transform: translateY(1px);
 }
@@ -1185,46 +1175,73 @@ html.stage-lock body {
   }
 }
 
-/* a plate: a real screenshot when there is one, a typographic stand-in until then */
-.plate {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--pr);
-  overflow: hidden;
-  background: var(--plate);
-  color: var(--plate-ink);
+/* a project's pictures: two framed images, stepped left and right down the page */
+.figs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5cqw;
+  padding: 4cqw 0 1cqw;
 }
-.plate img {
+.fig {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5cqw;
+}
+.fig--a {
+  width: 82%;
+  align-self: flex-start;
+}
+.fig--b {
+  width: 90%;
+  align-self: flex-end;
+}
+.fig-frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 2.2cqw;
+  background: var(--plate);
+}
+.fig-frame img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 1.1s var(--ease-out);
 }
-.plate-letter {
+.fig:hover .fig-frame img {
+  transform: scale(1.045);
+}
+/* until there is a picture: the project's initial in one frame, its year in the other */
+.fig-mark {
   position: absolute;
-  left: 6cqw;
-  bottom: 9cqw;
+  left: 5%;
+  bottom: -9%;
   font-family: var(--serif);
-  font-size: 112cqw;
+  font-size: 46cqw;
   line-height: 0.8;
   letter-spacing: -0.04em;
-  color: var(--plate-ink);
-  opacity: 0.2;
+  color: var(--accent);
+  opacity: 0.22;
+  transition: transform 1.1s var(--ease-out);
 }
-.plate-cap {
-  position: absolute;
-  left: 9cqw;
-  right: 11cqw;
-  top: 9.5cqw;
-  display: flex;
-  justify-content: space-between;
+.fig--b .fig-mark {
+  left: auto;
+  right: 5%;
+  bottom: -5%;
+  font-size: 30cqw;
+  letter-spacing: -0.03em;
 }
-.plate .t-meta {
-  color: var(--plate-ink);
-  opacity: 0.8;
+.fig:hover .fig-mark {
+  transform: translate(1.5%, -2.5%);
 }
-
+.fig figcaption {
+  padding-left: 0.2em;
+}
 /* ══════════════════════════════════════════════════════════════════
    The ledge — books stand face-out on a thin oak shelf
    ══════════════════════════════════════════════════════════════════ */
@@ -1956,51 +1973,259 @@ html.has-cursor textarea {
   background: rgba(21, 21, 21, 0.08);
   box-shadow: 0 0 0 0.35px var(--ink);
 }
-/* the word comes out beside the dot, so what is under the pointer stays in view */
-.cursor-label {
+/* the sign: a small disc beside the dot, so what is under the pointer stays in view */
+.cursor-badge {
   position: absolute;
-  left: 11px;
-  top: 11px;
-  height: 25px;
-  padding: 0 11px;
+  left: 12px;
+  top: 12px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 50%;
   background: var(--ink);
   color: var(--paper);
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
   opacity: 0;
   transform-origin: 0 0;
-  transform: scale(0.5);
-  transition: transform 0.3s var(--ease-out), opacity 0.18s;
+  transform: scale(0.35);
+  transition: transform 0.32s var(--ease-out), opacity 0.18s;
 }
-.cursor[data-mode="label"] .cursor-label {
+.cursor[data-mode="icon"] .cursor-badge {
   opacity: 1;
   transform: scale(1);
 }
-.cursor[data-fx="1"] .cursor-label {
-  left: auto;
-  right: 11px;
-  transform-origin: 100% 0;
+.cursor[data-shape="badge"][data-fx="1"] .cursor-badge {
+  left: -42px;
 }
-.cursor[data-fy="1"] .cursor-label {
-  top: auto;
-  bottom: 11px;
-  transform-origin: 0 100%;
+.cursor[data-shape="badge"][data-fy="1"] .cursor-badge {
+  top: -42px;
 }
-.cursor[data-fx="1"][data-fy="1"] .cursor-label {
-  transform-origin: 100% 100%;
+.cursor-badge svg {
+  display: none;
+  width: 15px;
+  height: 15px;
+}
+.cursor[data-icon="book"] svg[data-i="book"],
+.cursor[data-icon="camera"] svg[data-i="camera"],
+.cursor[data-icon="right"] svg[data-i="right"],
+.cursor[data-icon="left"] svg[data-i="left"],
+.cursor[data-icon="out"] svg[data-i="out"],
+.cursor[data-icon="mail"] svg[data-i="mail"],
+.cursor[data-icon="down"] svg[data-i="down"],
+.cursor[data-icon="plane"] svg[data-i="plane"],
+.cursor[data-icon="copy"] svg[data-i="copy"],
+.cursor[data-icon="list"] svg[data-i="list"],
+.cursor[data-icon="cross"] svg[data-i="cross"],
+.cursor[data-icon="skip"] svg[data-i="skip"],
+.cursor[data-icon="sound"] svg[data-i="sound"],
+.cursor[data-icon="mute"] svg[data-i="mute"] {
+  display: block;
+}
+/* a lens: over a picture the cursor itself becomes the disc, centred on the pointer */
+.cursor[data-shape="lens"] .cursor-badge {
+  left: -31px;
+  top: -31px;
+  width: 62px;
+  height: 62px;
+  transform-origin: 50% 50%;
+}
+.cursor[data-shape="lens"] .cursor-badge svg {
+  width: 23px;
+  height: 23px;
+}
+/* a ring: at the edge of a page that can be turned — open, so the page shows through */
+.cursor[data-shape="ring"] .cursor-badge {
+  left: -26px;
+  top: -26px;
+  width: 52px;
+  height: 52px;
+  transform-origin: 50% 50%;
+  background: rgba(251, 249, 243, 0.86);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.cursor[data-shape="ring"] .cursor-badge svg {
+  width: 19px;
+  height: 19px;
+}
+.cursor[data-mode="icon"][data-shape="lens"] .cursor-dot,
+.cursor[data-mode="icon"][data-shape="ring"] .cursor-dot {
+  opacity: 0;
 }
 .cursor[data-down="1"] .cursor-dot {
   transform: scale(0.7);
 }
-.cursor[data-down="1"] .cursor-label {
-  transform: scale(0.94);
+.cursor[data-down="1"][data-mode="icon"] .cursor-badge {
+  transform: scale(0.86);
+}
+
+/* each sign has its own small movement (a different animation per sign, so it plays again whenever the sign changes) */
+.cursor[data-mode="icon"][data-icon="book"] svg {
+  animation: cur-open 0.5s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="camera"] svg {
+  animation: cur-shutter 0.55s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="camera"] .cursor-badge {
+  animation: cur-flash 0.6s ease-out;
+}
+.cursor[data-mode="icon"][data-icon="right"] svg {
+  animation: cur-in-r 0.35s var(--ease-out), cur-nudge-r 1.3s 0.35s ease-in-out infinite;
+}
+.cursor[data-mode="icon"][data-icon="left"] svg {
+  animation: cur-in-l 0.35s var(--ease-out), cur-nudge-l 1.3s 0.35s ease-in-out infinite;
+}
+.cursor[data-mode="icon"][data-icon="skip"] svg {
+  animation: cur-in-r 0.3s var(--ease-out), cur-nudge-r 0.8s 0.3s ease-in-out infinite;
+}
+.cursor[data-mode="icon"][data-icon="out"] svg {
+  animation: cur-in-out 0.4s var(--ease-out), cur-nudge-out 1.4s 0.4s ease-in-out infinite;
+}
+.cursor[data-mode="icon"][data-icon="down"] svg {
+  animation: cur-in-down 0.4s var(--ease-out), cur-nudge-down 1.2s 0.4s ease-in-out infinite;
+}
+.cursor[data-mode="icon"][data-icon="plane"] svg {
+  animation: cur-fly 0.55s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="mail"] svg {
+  animation: cur-mail 0.45s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="copy"] svg {
+  animation: cur-copy 0.4s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="list"] svg {
+  animation: cur-list 0.45s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="cross"] svg {
+  animation: cur-spin 0.4s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="sound"] svg {
+  animation: cur-sound 0.45s var(--ease-out);
+}
+.cursor[data-mode="icon"][data-icon="mute"] svg {
+  animation: cur-mute 0.4s var(--ease-out);
+}
+@keyframes cur-open {
+  from {
+    transform: scaleX(0.15);
+  }
+}
+@keyframes cur-shutter {
+  0% {
+    transform: scale(1.35);
+  }
+  45% {
+    transform: scale(0.86);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes cur-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(21, 21, 21, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(21, 21, 21, 0);
+  }
+}
+@keyframes cur-in-r {
+  from {
+    transform: translateX(-7px);
+    opacity: 0;
+  }
+}
+@keyframes cur-nudge-r {
+  50% {
+    transform: translateX(3px);
+  }
+}
+@keyframes cur-in-l {
+  from {
+    transform: translateX(7px);
+    opacity: 0;
+  }
+}
+@keyframes cur-nudge-l {
+  50% {
+    transform: translateX(-3px);
+  }
+}
+@keyframes cur-in-out {
+  from {
+    transform: translate(-5px, 5px);
+    opacity: 0;
+  }
+}
+@keyframes cur-nudge-out {
+  50% {
+    transform: translate(1.5px, -1.5px);
+  }
+}
+@keyframes cur-in-down {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+@keyframes cur-nudge-down {
+  50% {
+    transform: translateY(2px);
+  }
+}
+@keyframes cur-fly {
+  0% {
+    transform: translate(-8px, 8px) scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(1.5px, -1.5px);
+  }
+}
+@keyframes cur-mail {
+  0% {
+    transform: translateY(5px) rotate(-10deg);
+    opacity: 0;
+  }
+}
+@keyframes cur-copy {
+  from {
+    transform: translate(3px, 3px);
+    opacity: 0.2;
+  }
+}
+@keyframes cur-list {
+  from {
+    transform: scaleX(0.3);
+    transform-origin: 0 50%;
+  }
+  to {
+    transform-origin: 0 50%;
+  }
+}
+@keyframes cur-spin {
+  from {
+    transform: rotate(-90deg) scale(0.6);
+  }
+}
+@keyframes cur-sound {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+}
+@keyframes cur-mute {
+  0% {
+    transform: scale(1.15);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-badge,
+  .cursor-badge svg {
+    animation: none !important;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════

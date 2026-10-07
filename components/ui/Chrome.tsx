@@ -15,7 +15,7 @@ function SoundToggle() {
     <button
       type="button"
       className="tool tool-sound"
-      data-cursor={muted ? "Sound on" : "Sound off"}
+      data-cursor={muted ? "sound-on" : "sound-off"}
       aria-label={muted ? "Turn sound on" : "Turn sound off"}
       aria-pressed={muted}
       onClick={() => {
@@ -74,10 +74,10 @@ export const Pager = forwardRef<HTMLDivElement, { onPrev: () => void; onNext: ()
         </span>
       </div>
       <div className="pager-nav">
-        <button type="button" className="pager-btn" data-prev data-cursor="Back" aria-label="Previous page" onClick={onPrev}>
+        <button type="button" className="pager-btn" data-prev data-cursor="prev" aria-label="Previous page" onClick={onPrev}>
           <Chevron flip />
         </button>
-        <button type="button" className="pager-btn" data-next data-cursor="Next" aria-label="Next page" onClick={onNext}>
+        <button type="button" className="pager-btn" data-next data-cursor="next" aria-label="Next page" onClick={onNext}>
           <Chevron />
         </button>
       </div>
@@ -102,7 +102,7 @@ export const IntroControls = forwardRef<HTMLDivElement, { onSkip: () => void; to
       <span data-intro-hint className="intro-hint">
         {touch ? "Tap the clasp to open" : "Click the clasp to open"}
       </span>
-      <button type="button" onClick={onSkip} data-skip data-cursor="Skip" className="skip">
+      <button type="button" onClick={onSkip} data-skip data-cursor="skip" className="skip">
         Skip intro
       </button>
     </div>

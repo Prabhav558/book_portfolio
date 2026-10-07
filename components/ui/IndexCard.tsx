@@ -123,7 +123,7 @@ export function IndexCard({
         className="index-tab"
         aria-haspopup="dialog"
         aria-expanded={open}
-        data-cursor="Index"
+        data-cursor="index"
         onClick={() => (open ? close() : show())}
       >
         Index
@@ -142,7 +142,7 @@ export function IndexCard({
             <header className="index-head">
               <span>Index</span>
               <span className="index-owner">{profile.name}</span>
-              <button type="button" className="index-close" aria-label="Close the index" data-cursor="Close" onClick={() => close()}>
+              <button type="button" className="index-close" aria-label="Close the index" data-cursor="close" onClick={() => close()}>
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
                   <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" strokeLinecap="round" />
                 </svg>
@@ -156,7 +156,7 @@ export function IndexCard({
                     className="index-vol"
                     aria-current={here?.book === v.book && !v.entries.some((e) => e.id === here.id) ? "true" : undefined}
                     data-here={here?.book === v.book ? "" : undefined}
-                    data-cursor="Open"
+                    data-cursor="open"
                     onClick={() => go(v.book, null)}
                   >
                     <span className="index-roman">{v.roman}</span>
@@ -170,7 +170,7 @@ export function IndexCard({
                           type="button"
                           className="index-entry"
                           aria-current={here?.book === v.book && here.id === e.id ? "page" : undefined}
-                          data-cursor="Go"
+                          data-cursor="go"
                           onClick={() => go(v.book, e.id)}
                         >
                           <span>{e.name}</span>

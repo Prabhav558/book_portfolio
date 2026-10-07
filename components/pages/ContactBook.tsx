@@ -25,7 +25,7 @@ function Reach() {
           {profile.email}
         </a>
         <div className="mt-[5cqw] flex flex-wrap gap-x-[1.6em] gap-y-[0.6em] text-[0.95em]">
-          <button type="button" className="link" onClick={copy}>
+          <button data-cursor="copy" type="button" className="link" onClick={copy}>
             {copied ? "Copied" : "Copy address"}
           </button>
           <TextLink href={profile.resumeUrl} download>
@@ -140,7 +140,7 @@ function Letter() {
         <span className={`t-meta ${status === "error" ? "!text-[#a2483a]" : ""}`} role="status">
           {status === "error" ? error : "Goes straight to my inbox"}
         </span>
-        <button type="submit" className="btn shrink-0" disabled={status === "sending"}>
+        <button type="submit" className="btn shrink-0" data-cursor="send" disabled={status === "sending"}>
           {status === "sending" ? "Sending" : "Send"} <Arrow />
         </button>
       </div>

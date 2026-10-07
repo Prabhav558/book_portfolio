@@ -16,7 +16,7 @@ npm run build && npm start
 | --- | --- |
 | All text, links, projects, roles | `content/portfolio.ts` |
 | Colours of the four volumes | `content/palette.ts` (six roles per volume; the recipe is at the top of the file) |
-| Project screenshots | set `image: "/work/name.jpg"` on a featured project (file in `public/work/`). Until then its left-hand page is a tinted plate with the project's initial. |
+| Project pictures | set `images: ["/work/name-1.jpg", "/work/name-2.jpg"]` on a featured project (files in `public/work/`, landscape, about 16:10). Until then two tinted frames stand in for them. |
 | Résumé download | replace `public/resume.pdf` |
 | Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`. Without a key the form falls back to `mailto:`. |
 | Room, paper, ink, oak and steel | the tokens at the top of `app/globals.css` (`--room`, `--paper`, `--ink`, `--oak`, …) and the `.clasp-*` rules |
@@ -38,7 +38,7 @@ npm run build && npm start
 - **The camera** (`components/stage/Stage.tsx`): the shelf, books and intro ink sit inside one node. It looks at the open book, drifts up to the shelf as a book goes back, and comes down with the next. It only pans, because moving a layer is free and zooming redraws every surface.
 - **The intro** (`lib/sketch.ts`): fonts, textures, WebGL, audio and the first book's sheets load first; then the cover is drawn in ink exactly over the real book, and the sheet it is drawn on dissolves. Unread volumes keep their ink on the shelf.
 - **The index** (`components/ui/IndexCard.tsx`): a card pulled out from a tab. It lists every volume and its named pages with the page numbers they have on this screen, and jumps anywhere.
-- **The cursor** (`components/ui/Cursor.tsx`): mouse and trackpad only. Mark anything with `data-cursor="Word"` to have it say that word.
+- **The cursor** (`components/ui/Cursor.tsx`): mouse and trackpad only. It shows a different sign, with its own small movement, for each kind of control: a camera over pictures, a book over volumes, arrows for turning, an envelope for mail, and so on. Mark anything with `data-cursor="<kind>"` (the kinds are listed at the top of the file).
 - **The room** (`components/three/ambient.ts`): one WebGL pass for daylight and a window shaft, tinted toward the open volume.
 
 ## Accessibility

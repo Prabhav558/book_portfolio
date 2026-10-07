@@ -26,7 +26,7 @@ export const Shelf = forwardRef<
             className="shelf-slot"
             style={{ "--c": b.palette.accent } as CSSProperties}
             aria-label={`Open ${b.label}`}
-            data-cursor="Open"
+            data-cursor="open"
             onClick={(e) => pick(e, onPick, i)}
           >
             {/* shows in this volume's colour while the book is out: "you are here" */}
@@ -46,7 +46,7 @@ export const Shelf = forwardRef<
             tabIndex={-1}
             aria-hidden
             style={{ "--c": b.palette.accent } as CSSProperties}
-            data-cursor="Open"
+            data-cursor="open"
             onClick={(e) => pick(e, onPick, i)}
           >
             {b.label}

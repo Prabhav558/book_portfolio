@@ -58,8 +58,12 @@ export type Project = {
   tags: string[];
   live?: string;
   code?: string;
-  /** Optional screenshot for featured projects, e.g. "/work/ledgerline.jpg" (put the file in /public). */
-  image?: string;
+  /**
+   * Up to two pictures for a featured project, shown on the left-hand page, e.g.
+   * ["/work/ledgerline-1.jpg", "/work/ledgerline-2.jpg"] (put the files in /public/work).
+   * Landscape, about 16:10. Until they are set, tinted frames stand in for them.
+   */
+  images?: string[];
 };
 
 export const featuredProjects: Project[] = [

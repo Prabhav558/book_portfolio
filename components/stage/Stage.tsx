@@ -588,10 +588,10 @@ export function Stage({
       const b = L.books[director.states[director.cur].book];
       if (h.side === "any") {
         const fx = (x - (L.cx - b.bw / 2)) / b.bw;
-        return fx > 0.8 && canTurn(1) ? "Turn" : fx < 0.16 && canTurn(-1) ? "Back" : null;
+        return fx > 0.8 && canTurn(1) ? "turn" : fx < 0.16 && canTurn(-1) ? "back" : null;
       }
       if (Math.abs(x - L.cx) / b.bw < 0.8) return null;
-      return h.side === "R" ? (canTurn(1) ? "Turn" : null) : canTurn(-1) ? "Back" : null;
+      return h.side === "R" ? (canTurn(1) ? "turn" : null) : canTurn(-1) ? "back" : null;
     };
     undo.push(() => (cursorProbe.at = null));
 

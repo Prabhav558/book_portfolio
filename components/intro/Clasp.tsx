@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 export const Clasp = forwardRef<HTMLButtonElement, { onOpen: () => void }>(function Clasp({ onOpen }, ref) {
   return (
     <div className="clasp-pos">
-      <button ref={ref} type="button" className="clasp" aria-label="Open the book" data-cursor="Open" onClick={onOpen}>
+      <button ref={ref} type="button" className="clasp" aria-label="Open the book" data-cursor="open" onClick={onOpen}>
         <span className="clasp-face">
           <span className="clasp-glow" />
           <span className="clasp-strap" />

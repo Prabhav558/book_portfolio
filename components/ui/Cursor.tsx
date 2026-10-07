@@ -1,42 +1,93 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cursorProbe } from "@/lib/cursor";
 
 /**
- * The cursor: a small dot that says what a click will do. Over anything marked `data-cursor`
- * (or the turnable edge of a page) a word comes out beside it; over other links it opens into
- * a ring. Only with a mouse or trackpad — touch screens never see it — and text fields keep the
- * ordinary caret.
+ * The cursor: a small dot that shows what a click will do, with its own sign and its own
+ * small movement for each kind of thing it is over.
  *
- * The dot is moved in the pointer event itself, not on the next frame, so it never trails.
+ *   badge  a little disc beside the dot (the target stays in view): open, visit, write, save…
+ *   lens   the cursor becomes a disc centred on the pointer: looking at a picture
+ *   ring   an open ring with an arrow: a page that can be turned
+ *
+ * Anything can ask for a sign with `data-cursor="<kind>"`; links that open elsewhere, download
+ * or write mail are recognised by themselves, and the scene answers for the edges of a page
+ * (lib/cursor.ts). Mouse and trackpad only; text fields keep the ordinary caret. The dot is
+ * moved in the pointer event itself, not on the next frame, so it never trails.
  */
+
+type Shape = "badge" | "lens" | "ring";
+const KINDS: Record<string, { icon: string; shape: Shape }> = {
+  open: { icon: "book", shape: "badge" },
+  view: { icon: "camera", shape: "lens" },
+  turn: { icon: "right", shape: "ring" },
+  back: { icon: "left", shape: "ring" },
+  next: { icon: "right", shape: "badge" },
+  prev: { icon: "left", shape: "badge" },
+  go: { icon: "right", shape: "badge" },
+  visit: { icon: "out", shape: "badge" },
+  write: { icon: "mail", shape: "badge" },
+  save: { icon: "down", shape: "badge" },
+  send: { icon: "plane", shape: "badge" },
+  copy: { icon: "copy", shape: "badge" },
+  index: { icon: "list", shape: "badge" },
+  close: { icon: "cross", shape: "badge" },
+  skip: { icon: "skip", shape: "badge" },
+  "sound-on": { icon: "sound", shape: "badge" },
+  "sound-off": { icon: "mute", shape: "badge" },
+};
+
+const ICONS: Record<string, ReactNode> = {
+  book: <path d="M8 4.3C6.6 3.3 4.6 3.1 2.5 3.5v8.3c2.1-.4 4.1-.2 5.5.8 1.4-1 3.4-1.2 5.5-.8V3.5C11.4 3.1 9.4 3.3 8 4.3zm0 0v8.3" />,
+  camera: (
+    <>
+      <path d="M2.5 5.6h2.3l1-1.6h4.4l1 1.6h2.3v6.9h-11z" />
+      <circle cx="8" cy="8.9" r="2.1" />
+    </>
+  ),
+  right: <path d="M3 8h10M9 4l4 4-4 4" />,
+  left: <path d="M13 8H3M7 4L3 8l4 4" />,
+  out: <path d="M5 11l6-6M6 5h5v5" />,
+  mail: <path d="M2.5 4.5h11v7h-11zM2.8 4.9L8 8.8l5.2-3.9" />,
+  down: <path d="M8 2.5V10M5 7.2l3 3 3-3M3 13h10" />,
+  plane: <path d="M13.5 2.5L2.5 7l4 1.6 1.5 4zM6.5 8.6l7-6.1" />,
+  copy: <path d="M5.5 5.5h7v7h-7zM3.5 10.5v-7h7" />,
+  list: <path d="M3 4.5h10M3 8h10M3 11.5h6" />,
+  cross: <path d="M4 4l8 8M12 4l-8 8" />,
+  skip: <path d="M3.5 4l4 4-4 4M8.5 4l4 4-4 4" />,
+  sound: <path d="M2.8 6.4h2.2L8 4v8L5 9.6H2.8zM10.4 6.1c.9.8.9 3 0 3.8M12.2 4.6c1.7 1.7 1.7 5.1 0 6.8" />,
+  mute: <path d="M2.8 6.4h2.2L8 4v8L5 9.6H2.8zM10.6 6.4l3 3.2M13.6 6.4l-3 3.2" />,
+};
+
 export function Cursor() {
   const el = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     const node = el.current!;
-    const label = node.querySelector<HTMLElement>(".cursor-label")!;
     const html = document.documentElement;
     html.classList.add("has-cursor");
 
     let on = false;
     let mode = "";
-    let text = "";
+    let kind = "";
     const show = (v: boolean) => {
       if (v === on) return;
       on = v;
       node.dataset.on = v ? "1" : "0";
     };
-    const set = (m: string, t = "") => {
+    /** mode: "" plain dot · "ring" a link with nothing more to say · "icon" a sign · "text" a text field */
+    const set = (m: string, k = "") => {
       if (m !== mode) {
         mode = m;
         node.dataset.mode = m;
       }
-      if (t !== text) {
-        text = t;
-        if (t) label.textContent = t;
+      if (k && k !== kind) {
+        kind = k;
+        node.dataset.kind = k;
+        node.dataset.icon = KINDS[k].icon;
+        node.dataset.shape = KINDS[k].shape;
       }
     };
 
@@ -44,17 +95,17 @@ export function Cursor() {
       const t = target as Element | null;
       if (!t?.closest) return set("");
       if (t.closest("input, textarea, select, [contenteditable]")) return set("text");
-      const tagged = t.closest<HTMLElement>("[data-cursor]");
-      if (tagged?.dataset.cursor) return set("label", tagged.dataset.cursor);
+      const tagged = t.closest<HTMLElement>("[data-cursor]")?.dataset.cursor;
+      if (tagged && KINDS[tagged]) return set("icon", tagged);
       const link = t.closest<HTMLElement>("a, button");
       if (link && !(link as HTMLButtonElement).disabled) {
-        if (link.matches('a[target="_blank"]')) return set("label", "Visit");
-        if (link.matches("a[download]")) return set("label", "Save");
-        if (link.matches('a[href^="mailto:"]')) return set("label", "Write");
+        if (link.matches('a[target="_blank"]')) return set("icon", "visit");
+        if (link.matches("a[download]")) return set("icon", "save");
+        if (link.matches('a[href^="mailto:"]')) return set("icon", "write");
         return set("ring");
       }
       const hint = cursorProbe.at?.(x, y);
-      return hint ? set("label", hint) : set("");
+      return hint && KINDS[hint] ? set("icon", hint) : set("");
     };
 
     // The scene changes under a pointer that is not moving (a button is clicked away, a page
@@ -74,13 +125,13 @@ export function Cursor() {
       px = e.clientX;
       py = e.clientY;
       node.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0)`;
-      // near the right or bottom edge the word comes out on the other side, so it is never cut off
-      const fx = e.clientX > window.innerWidth - 120 ? "1" : "0";
-      const fy = e.clientY > window.innerHeight - 48 ? "1" : "0";
+      // near the right or bottom edge the badge comes out on the other side, so it is never cut off
+      const fx = e.clientX > window.innerWidth - 56 ? "1" : "0";
+      const fy = e.clientY > window.innerHeight - 56 ? "1" : "0";
       if (node.dataset.fx !== fx) node.dataset.fx = fx;
       if (node.dataset.fy !== fy) node.dataset.fy = fy;
       show(true);
-      // while a button is held (a page being dragged) it keeps saying what it said
+      // while a button is held (a page being dragged) it keeps showing what it showed
       if (!e.buttons) read(e.target, e.clientX, e.clientY);
     };
     const down = () => (node.dataset.down = "1");
@@ -112,7 +163,13 @@ export function Cursor() {
   return (
     <div ref={el} className="cursor" aria-hidden>
       <i className="cursor-dot" />
-      <span className="cursor-label" />
+      <span className="cursor-badge">
+        {Object.entries(ICONS).map(([name, shape]) => (
+          <svg key={name} data-i={name} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            {shape}
+          </svg>
+        ))}
+      </span>
     </div>
   );
 }
