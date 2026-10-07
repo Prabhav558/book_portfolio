@@ -1381,6 +1381,12 @@ html.stage-lock body {
 .shelf-slot[data-filled] {
   pointer-events: auto;
 }
+/* under a finger the small books on the phone's ledge get a hit area of at least 44px */
+[data-kind="phone"] .shelf-slot::before {
+  content: "";
+  position: absolute;
+  inset: -6px -5px -10px;
+}
 /* a volume nobody has taken down yet is not on the shelf: no label, no mark, nothing to press */
 .shelf-slot[data-unseen] {
   pointer-events: none;
