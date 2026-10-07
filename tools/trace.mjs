@@ -21,6 +21,8 @@ await page.setViewport(vp);
 if (Number(throttle) > 1) await (await page.target().createCDPSession()).send("Emulation.setCPUThrottlingRate", { rate: Number(throttle) });
 await page.goto(process.env.SITE ?? "http://localhost:3123/", { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".book-anchor");
+// CSS="…" tries a style change without touching the source, to see what a rule costs
+if (process.env.CSS) await page.addStyleTag({ content: process.env.CSS });
 const cats = ["devtools.timeline", "disabled-by-default-devtools.timeline", "disabled-by-default-devtools.timeline.stack"];
 // INVAL=1 also records which nodes each style recalculation was scheduled for (see the trace file)
 if (process.env.INVAL) cats.push("disabled-by-default-devtools.timeline.invalidationTracking");

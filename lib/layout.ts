@@ -30,7 +30,7 @@ export type Layout = {
 /** Page proportions (width / height). Phones may use a taller page to fill the screen. */
 const AR = 0.72;
 const AR_TALL = 0.58;
-const ZOOM = 1.03;
+const ZOOM = 1;
 
 /**
  * Tablet portrait mixes layouts per volume: the first two read as single large

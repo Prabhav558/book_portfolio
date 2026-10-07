@@ -2,6 +2,7 @@
 
 import { highlights, principles, profile, skills } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
+import { PALETTE } from "@/content/palette";
 import { CoverTitle, NextPage, Opener, QuotePage, TextLink, fit, useNav } from "./primitives";
 
 function Title() {
@@ -149,10 +150,7 @@ export const aboutBook: BookDef = {
   id: "about",
   label: "About",
   volume: "Vol. I",
-  leather: "#84888c",
-  accent: "#8a6a45",
-  silk: "#b88a4a",
-  glow: [1, 0.97, 0.92],
+  palette: PALETTE.about,
   cover: <CoverTitle volume="Vol. I" title={profile.name} icon="book" />,
   blocks,
   filler: <QuotePage quote="Make it work, make it right, make it fast. Then make it beautiful." by="A rule taped to my monitor" />,

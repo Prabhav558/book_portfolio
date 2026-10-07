@@ -110,6 +110,7 @@ export function Stage({
     const paper = paperRef.current!;
     const sketchSvg = sketchRef.current!;
     const ink = sketchSvg.parentElement!;
+    const ui = rootEl.querySelector<HTMLElement>(".ui-layer")!;
 
     // ───────── first look: everything at rest, hidden behind the white page ─────────
     els.forEach(resetBook);
@@ -181,7 +182,7 @@ export function Stage({
           shelfLabels[k]?.toggleAttribute("data-filled", on);
           if (!on) lift(k, false);
         }
-        const g = BOOKS[k].glow;
+        const g = BOOKS[k].palette.glow;
         const w = b.glow.v;
         tr += (g[0] - BASE_TINT[0]) * w;
         tg += (g[1] - BASE_TINT[1]) * w;
@@ -223,7 +224,12 @@ export function Stage({
       const apply = () => {
         nowVol.textContent = `Vol. ${ROMAN[book]}`;
         nowTitle.textContent = BOOKS[book].label;
-        nowRef.current!.style.setProperty("--c", BOOKS[book].silk);
+        // the open volume lends its colour to everything around the book: the dot, focus rings, the selection
+        const p = BOOKS[book].palette;
+        // (set on the controls only: a custom property on the root would restyle every page of every book)
+        ui.style.setProperty("--vol-accent", p.accent);
+        ui.style.setProperty("--vol-cloth", p.cloth);
+        ui.style.setProperty("--vol-ribbon", p.ribbon);
         shelfLabels.forEach((l, k) => l.toggleAttribute("data-now", k === book));
       };
       if (instant) return apply();

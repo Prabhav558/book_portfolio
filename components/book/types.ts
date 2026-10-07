@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Palette } from "@/content/palette";
 
 export type Mode = "spread" | "single";
 
@@ -34,14 +35,8 @@ export type BookDef = {
   label: string;
   /** Short volume mark, e.g. "Vol. II". */
   volume: string;
-  /** Cloth colour of the cover — also the colour of chapter-opener pages. */
-  leather: string;
-  /** Ink accent for this volume (italics, link hovers). */
-  accent: string;
-  /** Silk bookmark ribbon. */
-  silk: string;
-  /** Light tint (0–1 rgb) while this volume is on the table. */
-  glow: [number, number, number];
+  /** This volume's colours (content/palette.ts). */
+  palette: Palette;
   cover: ReactNode;
   blocks: Block[];
   /** A quiet page used to keep a two-page book's page count even. */

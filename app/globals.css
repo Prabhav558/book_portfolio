@@ -17,7 +17,7 @@
   --paper: #f8f6f1;
   --ink: #151515;
   --ink-2: #4b4945;
-  --ink-3: #8b8881;
+  --ink-3: #6f6c66; /* 4.8:1 on paper */
   --hair: rgba(21, 21, 21, 0.13);
   --hair-2: rgba(21, 21, 21, 0.28);
   /* materials */
@@ -37,6 +37,7 @@
   --paper-grain: none;
   --wood: none;
   --wood-h: none;
+  --edge: none;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -57,15 +58,15 @@ body {
   overscroll-behavior: none;
 }
 ::selection {
-  background: rgba(21, 21, 21, 0.14);
+  background: color-mix(in srgb, var(--accent, #151515) 20%, transparent);
 }
 :focus:not(:focus-visible) {
   outline: none;
 }
 :focus-visible {
-  outline: 1.5px solid var(--ink);
+  outline: 2px solid var(--accent, var(--vol-accent, var(--ink)));
   outline-offset: 3px;
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 /* the book page never scrolls; gestures turn pages instead (pinch-zoom still works) */
@@ -122,6 +123,9 @@ html.stage-lock body {
   background: var(--room);
   pointer-events: none;
   will-change: opacity;
+  /* a hair short of opaque, on purpose: a fully opaque sheet would hide the scene from the
+     compositor, and all of it would have to be drawn in the instant the sheet starts to dissolve */
+  opacity: 0.999;
 }
 /* the ink: line work plus the cover's lettering, registered to the real book underneath */
 .ink {
@@ -195,9 +199,9 @@ html.stage-lock body {
   border-radius: var(--R);
   background: rgba(38, 33, 26, 0.34);
   box-shadow:
-    0 calc(var(--bh) * 0.006) calc(var(--bh) * 0.014) rgba(38, 33, 26, 0.34),
-    0 calc(var(--bh) * 0.022) calc(var(--bh) * 0.05) rgba(38, 33, 26, 0.24),
-    0 calc(var(--bh) * 0.07) calc(var(--bh) * 0.15) rgba(38, 33, 26, 0.2);
+    calc(var(--bh) * 0.003) calc(var(--bh) * 0.007) calc(var(--bh) * 0.014) rgba(38, 33, 26, 0.36),
+    calc(var(--bh) * 0.014) calc(var(--bh) * 0.026) calc(var(--bh) * 0.05) rgba(38, 33, 26, 0.24),
+    calc(var(--bh) * 0.045) calc(var(--bh) * 0.08) calc(var(--bh) * 0.15) rgba(38, 33, 26, 0.18);
   opacity: 0;
   pointer-events: none;
   will-change: transform, opacity;
@@ -257,18 +261,35 @@ html.stage-lock body {
 .cover-back {
   position: absolute;
   inset: 0;
-  background: var(--grain), var(--leather);
+  background: var(--grain), var(--cloth);
   background-size: 256px 256px, auto;
-  /* the page block sits in a shallow well: light on the rim, shade where paper meets board */
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 0 calc(var(--o) * 1.6) rgba(0, 0, 0, 0.2);
+  /* hairlines only inside the book: a blurred shadow on a rounded shape is slow to draw, and these
+     faces are drawn for the first time in the middle of the cover's swing */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
 }
 .board-rear {
   border-radius: var(--Rs) var(--R) var(--R) var(--Rs);
 }
 .cover-back {
   border-radius: var(--R) var(--Rs) var(--Rs) var(--R);
+}
+/* the inside of a board is lined: a narrow turn-in of cloth, then the endpaper, which runs
+   on across the spine. It is what you see around the pages of the open book. */
+.board-rear::before,
+.cover-back::before {
+  content: "";
+  position: absolute;
+  --ti: calc(var(--o) * 0.36);
+  background: var(--paper-grain), var(--endpaper);
+  background-size: 240px 240px, auto;
+}
+.board-rear::before {
+  inset: var(--ti) var(--ti) var(--ti) 0;
+  border-radius: 0 calc(var(--R) - var(--ti)) calc(var(--R) - var(--ti)) 0;
+}
+.cover-back::before {
+  inset: var(--ti) 0 var(--ti) var(--ti);
+  border-radius: calc(var(--R) - var(--ti)) 0 0 calc(var(--R) - var(--ti));
 }
 /* open, the two boards meet at the spine: this strip of cloth bridges their rounded corners
    so the book reads as one continuous cover (shown only while the book lies open) */
@@ -290,15 +311,17 @@ html.stage-lock body {
   left: 0;
   right: 0;
   height: calc(var(--o) + 1px);
-  background: var(--grain), var(--leather);
-  background-size: 256px 256px, auto;
+  --ti: calc(var(--o) * 0.36);
 }
+/* cloth turn-in at the very edge, endpaper inside it — the same bands as on the boards either side */
 .hinge::before {
   top: 0;
+  background: linear-gradient(180deg, var(--cloth) 0, var(--cloth) var(--ti), var(--endpaper) var(--ti));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 .hinge::after {
   bottom: 0;
+  background: linear-gradient(0deg, var(--cloth) 0, var(--cloth) var(--ti), var(--endpaper) var(--ti));
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.16);
 }
 .cover-back > .paper {
@@ -337,6 +360,18 @@ html.stage-lock body {
     linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 10%, transparent 90%, rgba(0, 0, 0, 0.18)),
     repeating-linear-gradient(90deg, #fbfaf6 0 1px, #d7d3cb 1px 2px);
 }
+.edge-top {
+  left: 0;
+  top: var(--o);
+  width: var(--pw);
+  height: calc(var(--T) * 0.8);
+  transform-origin: 50% 0;
+  transform: translateZ(calc(var(--T) * 0.1)) rotateX(90deg);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 10%),
+    var(--edge), #f1eee7;
+  background-size: auto, 97px 8px, auto;
+}
 .edge-bottom {
   left: 0;
   top: calc(var(--bh) - var(--o));
@@ -354,22 +389,22 @@ html.stage-lock body {
 .stack {
   position: absolute;
   pointer-events: none;
-  background: repeating-linear-gradient(90deg, #fdfcf9 0 1px, #cfcbc3 1px 2.4px);
+  /* a shade darker than the sheets above, so the block reads as a separate thing lying under them */
+  background: var(--edge), #ebe7df;
+  background-size: 97px 8px, auto;
 }
 .stack--r {
   left: 0;
   top: var(--o);
   width: var(--pw);
   height: calc(var(--bh) - 2 * var(--o));
-  border-radius: 0 var(--rp) var(--rp) 0;
+  border-radius: 15% var(--rp) var(--rp) 15% / 0.6% var(--rp) var(--rp) 0.6%;
   transform: translateZ(calc(var(--T) * 0.03));
-  box-shadow: inset -3px 0 3px rgba(0, 0, 0, 0.14);
 }
 /* the left-hand one lives on the opened cover, under its page */
 .stack--l {
   inset: var(--o) 0 var(--o) var(--o);
-  border-radius: var(--rp) 0 0 var(--rp);
-  box-shadow: inset 3px 0 3px rgba(0, 0, 0, 0.14);
+  border-radius: var(--rp) 15% 15% var(--rp) / var(--rp) 0.6% 0.6% var(--rp);
 }
 
 /* ── cover: matte cloth with an oak spine band ── */
@@ -378,11 +413,13 @@ html.stage-lock body {
   background:
     var(--grain),
     linear-gradient(118deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 42%, rgba(0, 0, 0, 0.1) 100%),
-    var(--leather);
+    var(--cloth);
   background-size: 256px 256px, auto, auto;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0 rgba(0, 0, 0, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.2),
+    inset -2px 0 2px rgba(0, 0, 0, 0.14);
 }
 .cover-front::before {
   content: "";
@@ -428,22 +465,24 @@ html.stage-lock body {
   background-size: 240px 240px;
   color: var(--ink);
   /* the fore-edge corners of a sheet are rounded like the board. Everything that paints to the
-     edge of the page takes the same radius itself (--pr): clipping the sheet instead would cost
-     a mask per page, which high-density screens cannot afford */
+     edge of the page in colour (chapter openers, plates) takes the same radius itself (--pr):
+     clipping the sheet instead would cost a mask per page, which high-density screens cannot afford.
+     The lighting overlays stay square — they are transparent where the corners are. */
   border-radius: var(--pr);
 }
+/* a sheet rises out of the gutter: its top and bottom edges dip a few pixels over the last
+   stretch toward the spine (a long, very shallow corner) */
 .paper[data-side="R"] {
-  --pr: 0 var(--rp) var(--rp) 0;
+  --pr: 15% var(--rp) var(--rp) 15% / 0.6% var(--rp) var(--rp) 0.6%;
 }
 .paper[data-side="L"] {
-  --pr: var(--rp) 0 0 var(--rp);
+  --pr: var(--rp) 15% 15% var(--rp) / var(--rp) 0.6% 0.6% var(--rp);
 }
 /* the sheet curves down into the gutter: shade at the fold, a soft highlight on the rise */
 .paper::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: var(--pr);
   pointer-events: none;
   z-index: 2;
 }
@@ -470,16 +509,17 @@ html.stage-lock body {
 .cast {
   position: absolute;
   inset: 0;
-  border-radius: var(--pr);
   pointer-events: none;
   opacity: 0;
   z-index: 3;
 }
+/* these overlays are square (a rounded one is slow to draw, and they first appear mid-swing),
+   so each lets go just before the fore-edge, where the sheet's rounded corners are */
 .paper[data-side="R"] .shade {
-  background: linear-gradient(90deg, rgba(24, 20, 14, 0.3), rgba(24, 20, 14, 0.7));
+  background: linear-gradient(90deg, rgba(24, 20, 14, 0.3), rgba(24, 20, 14, 0.66) 93%, rgba(24, 20, 14, 0));
 }
 .paper[data-side="L"] .shade {
-  background: linear-gradient(270deg, rgba(24, 20, 14, 0.3), rgba(24, 20, 14, 0.7));
+  background: linear-gradient(270deg, rgba(24, 20, 14, 0.3), rgba(24, 20, 14, 0.66) 93%, rgba(24, 20, 14, 0));
 }
 .paper[data-side="R"] .cast {
   background: linear-gradient(90deg, rgba(24, 20, 14, 0.5) 0%, rgba(24, 20, 14, 0.16) 35%, rgba(24, 20, 14, 0) 75%);
@@ -618,7 +658,7 @@ html.stage-lock body {
   width: calc(var(--bw) * 0.02);
   height: calc(var(--bh) * 0.032);
   transform: translateZ(calc(var(--T) * 0.5));
-  background: linear-gradient(90deg, color-mix(in srgb, var(--silk) 62%, #000), var(--silk) 50%, color-mix(in srgb, var(--silk) 78%, #fff));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ribbon) 62%, #000), var(--ribbon) 50%, color-mix(in srgb, var(--ribbon) 78%, #fff));
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
 }
 
@@ -676,7 +716,7 @@ html.stage-lock body {
   background:
     var(--grain),
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.2)),
-    color-mix(in srgb, var(--leather) 76%, #000);
+    color-mix(in srgb, var(--cloth) 76%, #000);
   background-size: 256px 256px, auto, auto;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.22);
 }
@@ -734,7 +774,6 @@ html.stage-lock body {
 .pc {
   position: absolute;
   inset: 0;
-  border-radius: var(--pr);
   display: flex;
   flex-direction: column;
   padding: 9.5cqw 9cqw 0;
@@ -785,12 +824,13 @@ html.stage-lock body {
 
 /* a chapter opener: the whole page in the volume's cloth colour */
 .pc--tone {
-  background: var(--leather);
+  background: var(--tone);
+  border-radius: var(--pr);
   color: #fcfbf8;
 }
 .pc--tone .pg-foot,
 .pc--tone .t-meta {
-  color: rgba(255, 255, 255, 0.74);
+  color: #fcfbf8;
 }
 .pc--tone .t-body {
   color: rgba(255, 255, 255, 0.9);
@@ -1160,7 +1200,8 @@ html.stage-lock body {
   color: var(--ink);
 }
 .shelf-label[data-now] {
-  color: var(--ink);
+  color: var(--c, var(--ink));
+  font-weight: 600;
 }
 .shelf-slot:focus-visible {
   outline-offset: 6px;
@@ -1287,7 +1328,7 @@ html.stage-lock body {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--c, var(--ink));
+  background: var(--vol-ribbon, var(--ink));
   transition: background-color 0.6s;
 }
 .now-text {

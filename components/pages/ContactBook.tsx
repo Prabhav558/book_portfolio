@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { contactForm, profile, socials } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
+import { PALETTE } from "@/content/palette";
 import { Arrow, ArrowUpRight, CoverTitle, Opener, QuotePage, TextLink, fit, useNav } from "./primitives";
 
 function Reach() {
@@ -183,10 +184,7 @@ export const contactBook: BookDef = {
   id: "contact",
   label: "Contact",
   volume: "Vol. IV",
-  leather: "#b88672",
-  accent: "#9a4b36",
-  silk: "#b25540",
-  glow: [1, 0.92, 0.88],
+  palette: PALETTE.contact,
   cover: <CoverTitle volume="Vol. IV" title="Contact" icon="mail" />,
   blocks,
   filler: <QuotePage quote="The best projects started with a short, honest message." by="An open invitation" />,

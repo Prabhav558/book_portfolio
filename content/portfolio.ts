@@ -58,8 +58,6 @@ export type Project = {
   tags: string[];
   live?: string;
   code?: string;
-  /** Hue (0–360) used to tint the plate shown until there is a real image. */
-  hue: number;
   /** Optional screenshot for featured projects, e.g. "/work/ledgerline.jpg" (put the file in /public). */
   image?: string;
 };
@@ -73,7 +71,6 @@ export const featuredProjects: Project[] = [
     tags: ["Next.js", "tRPC", "PostgreSQL", "WebSockets"],
     live: "https://example.com",
     code: "https://github.com/",
-    hue: 28,
   },
   {
     title: "Atlas Notes",
@@ -83,7 +80,6 @@ export const featuredProjects: Project[] = [
     tags: ["React", "Yjs", "IndexedDB", "Rust/WASM"],
     live: "https://example.com",
     code: "https://github.com/",
-    hue: 152,
   },
 ];
 
@@ -94,7 +90,6 @@ export const moreProjects: Project[] = [
     summary: "Design-token compiler that outputs CSS, iOS and Android themes from one source.",
     tags: ["TypeScript", "CLI"],
     code: "https://github.com/",
-    hue: 12,
   },
   {
     title: "Murmur",
@@ -102,7 +97,6 @@ export const moreProjects: Project[] = [
     summary: "Voice-memo transcription with speaker diarisation and searchable timelines.",
     tags: ["Python", "Whisper", "FastAPI"],
     live: "https://example.com",
-    hue: 210,
   },
   {
     title: "Paperplane",
@@ -110,7 +104,6 @@ export const moreProjects: Project[] = [
     summary: "A tiny, typed email-templating library — 2kB, zero dependencies.",
     tags: ["TypeScript", "OSS"],
     code: "https://github.com/",
-    hue: 48,
   },
   {
     title: "Orbit UI",
@@ -118,7 +111,6 @@ export const moreProjects: Project[] = [
     summary: "Accessible headless component kit used across four internal products.",
     tags: ["React", "a11y", "Storybook"],
     code: "https://github.com/",
-    hue: 265,
   },
   {
     title: "Tidepool",
@@ -126,14 +118,12 @@ export const moreProjects: Project[] = [
     summary: "Ocean-data visualisation built with WebGL for a marine research lab.",
     tags: ["Three.js", "D3"],
     live: "https://example.com",
-    hue: 190,
   },
   {
     title: "Brightside",
     year: "2022",
     summary: "Hackathon-winning mental-health journaling app with mood analytics.",
     tags: ["React Native", "Firebase"],
-    hue: 330,
   },
 ];
 

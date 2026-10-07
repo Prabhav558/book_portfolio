@@ -1,5 +1,6 @@
 "use client";
 
+import { paletteVars } from "@/content/palette";
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { pageBox, type Layout } from "@/lib/layout";
 import type { Block, BookDef, PageSpec } from "./types";
@@ -137,7 +138,7 @@ export function Measure({ defs, layout, onDone }: { defs: BookDef[]; layout: Lay
         const p = pageBox(layout.books[k]);
         const shell: CSSProperties = { position: "absolute", left: 0, top: 0, width: p.w, height: p.h };
         return (
-          <div key={def.id} data-measure={k} style={{ "--accent": def.accent, "--leather": def.leather } as CSSProperties}>
+          <div key={def.id} data-measure={k} style={paletteVars(def.palette)}>
             <div className="paper m-normal" data-side="R" style={shell}>
               <div className="page-content">
                 <PageShell running="" folio={0}>

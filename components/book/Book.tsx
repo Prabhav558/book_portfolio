@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { BookBox } from "@/lib/layout";
+import { paletteVars } from "@/content/palette";
 import type { BookDef, PageSpec } from "./types";
 import { PageShell, type Paged } from "./Paginator";
 
@@ -104,9 +105,7 @@ export function Book({
           "--bh": `${box.bh.toFixed(2)}px`,
           "--bw": `${box.bw.toFixed(2)}px`,
           "--n": strips,
-          "--leather": def.leather,
-          "--accent": def.accent,
-          "--silk": def.silk,
+          ...paletteVars(def.palette),
         } as CSSProperties
       }
     >
@@ -116,6 +115,7 @@ export function Book({
           <div className="board-rear" />
           <div className="edge edge-spine" />
           <div className="edge edge-fore" />
+          <div className="edge edge-top" />
           <div className="edge edge-bottom" />
           {spread && <div className="hinge" />}
 

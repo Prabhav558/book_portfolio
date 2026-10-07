@@ -13,7 +13,8 @@ import { applyCurl, castLanding, castUnder, collectBend, createFill, type RigJob
  * Durations are real seconds.
  */
 export const D = { pull: 0.95, open: 1.25, flip: 1.05, close: 0.9, ret: 1, outro: 0.9 };
-export const CAMERA_ZOOM = 1.03;
+/** The open book is shown at exactly its laid-out size: growing it would mean redrawing every surface on the way. */
+export const CAMERA_ZOOM = 1;
 export const SHELF_TILT = 14;
 /** Fraction of a book's return after which the next book starts leaving the shelf. */
 export const HANDOFF = 0.4;
@@ -164,6 +165,11 @@ export function buildBook(
   // ───────── pull from the shelf ─────────
   const pull = D.pull;
   ft(tl, e.anchor, { zIndex: 1 }, { zIndex: 6, duration: 0.001 }, 0);
+  // in flight the book changes size every frame; this tells the browser to keep the surfaces it has
+  // (drawn once, at full size) instead of redrawing them all at each new size
+  const flying = (on: boolean, at: number) =>
+    ft(tl, e.anchor, { willChange: on ? "auto" : "transform" }, { willChange: on ? "transform" : "auto", duration: 0.001 }, at);
+  flying(true, 0);
   ft(tl, slot, { "--filled": 1 }, { "--filled": 0, duration: 0.3 }, 0);
   ft(tl, glow, { v: 0 }, { v: 1, duration: pull, ease: "sine.inOut" }, 0);
   nudge(tl, opts.left, 2.2, 0.06);
@@ -208,6 +214,7 @@ export function buildBook(
   markers.push({ time: t + 0.1, fwd: "open", back: "close" });
   t += O;
   labels.s0 = t;
+  flying(false, t - 0.002); // just before the book comes to rest, so it is over by the time it lies open
 
   // ───────── page turns ─────────
   const peek = peekOf(e);
@@ -277,6 +284,7 @@ export function buildBook(
 
   // ───────── close ─────────
   labels.close = t;
+  flying(true, t);
   const C = D.close;
   if (!single) {
     // the top of the left-hand stack lands first, the cover follows — no planes cross
@@ -315,6 +323,7 @@ export function buildBook(
   ft(tl, glow, { v: 1 }, { v: 0, duration: R, ease: "sine.inOut" }, t);
   ft(tl, slot, { "--filled": 0 }, { "--filled": 1, duration: 0.25 }, t + R * 0.78);
   ft(tl, e.anchor, { zIndex: 6 }, { zIndex: 1, duration: 0.001 }, t + R);
+  flying(false, t + R + 0.3);
   markers.push({ time: t + R * 0.93, fwd: "shelf", back: "shelf" });
   t += R;
   // the landing rocks its neighbours (the next book has already left by now — see HANDOFF)

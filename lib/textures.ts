@@ -77,6 +77,21 @@ function oak(ctx: CanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
+/** The cut edge of a block of pages: fine lines that are never quite evenly spaced or evenly bright. */
+function edge(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  let x = 0;
+  while (x < w) {
+    const gap = rnd(0.9, 2.3);
+    ctx.fillStyle = `rgba(92,84,70,${rnd(0.16, 0.5)})`;
+    ctx.fillRect(Math.round(x), 0, 1, h);
+    if (Math.random() < 0.12) {
+      ctx.fillStyle = `rgba(255,255,255,${rnd(0.3, 0.7)})`;
+      ctx.fillRect(Math.round(x) + 1, 0, 1, h);
+    }
+    x += 1 + gap;
+  }
+}
+
 let done: Promise<void> | null = null;
 
 export function installTextures() {
@@ -88,12 +103,19 @@ export function installTextures() {
       ctx.rotate(Math.PI / 2);
       ctx.drawImage(grain, 0, 0);
     });
-    const [c, p, wv, wh] = await Promise.all([toUrl(canvas(256, 256, cloth)), toUrl(canvas(240, 240, paper)), toUrl(grain), toUrl(across)]);
+    const [c, p, wv, wh, ed] = await Promise.all([
+      toUrl(canvas(256, 256, cloth)),
+      toUrl(canvas(240, 240, paper)),
+      toUrl(grain),
+      toUrl(across),
+      toUrl(canvas(97, 8, edge)),
+    ]);
     const root = document.documentElement.style;
     root.setProperty("--grain", `url(${c})`);
     root.setProperty("--paper-grain", `url(${p})`);
     root.setProperty("--wood", `url(${wv})`);
     root.setProperty("--wood-h", `url(${wh})`);
+    root.setProperty("--edge", `url(${ed})`);
   })();
   return done;
 }

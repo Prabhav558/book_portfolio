@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { extraHighlights, featuredProjects, moreProjects, type Project } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
+import { PALETTE } from "@/content/palette";
 import { CoverTitle, NextPage, Opener, QuotePage, TextLink, useNav } from "./primitives";
 
 const all = [...featuredProjects, ...moreProjects];
@@ -12,12 +13,13 @@ const span = years.length ? `${Math.min(...years)}–${Math.max(...years)}` : ""
 
 /**
  * Left-hand page of a featured project. Shows the project's screenshot when `image` is set;
- * until then, a typographic plate in the project's own tint.
+ * until then, a typographic plate in the volume's tint.
  */
 function Plate({ p, index }: { p: Project; index: number }) {
+  // plates stay inside the volume's colour: its tint and its endpaper, turn about
   const style = {
-    "--plate": `hsl(${p.hue} 22% 82%)`,
-    "--plate-ink": `hsl(${p.hue} 30% 22%)`,
+    "--plate": index % 2 ? "var(--endpaper)" : "var(--tint)",
+    "--plate-ink": "var(--accent)",
   } as CSSProperties;
   return (
     <div className="plate" style={style}>
@@ -193,10 +195,7 @@ export const projectsBook: BookDef = {
   id: "projects",
   label: "Projects",
   volume: "Vol. II",
-  leather: "#6f8d7c",
-  accent: "#2f5d4a",
-  silk: "#3f7a62",
-  glow: [0.86, 0.97, 0.9],
+  palette: PALETTE.projects,
   cover: <CoverTitle volume="Vol. II" title="Projects" icon="grid" />,
   blocks,
   filler: <QuotePage quote="Good work is mostly the patience to do the dull parts well." by="Workshop note" />,

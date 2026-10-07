@@ -2,6 +2,7 @@
 
 import { awards, education, experience, learning, type Role } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
+import { PALETTE } from "@/content/palette";
 import { CoverTitle, NextPage, Opener, QuotePage, useNav } from "./primitives";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -106,10 +107,7 @@ export const experienceBook: BookDef = {
   id: "experience",
   label: "Experience",
   volume: "Vol. III",
-  leather: "#6c88a4",
-  accent: "#2d4b6e",
-  silk: "#3e6592",
-  glow: [0.88, 0.93, 1],
+  palette: PALETTE.experience,
   cover: <CoverTitle volume="Vol. III" title="Experience" icon="timeline" />,
   blocks,
   filler: <QuotePage quote="Every role taught me one thing I still use every day." by="Looking back" />,
