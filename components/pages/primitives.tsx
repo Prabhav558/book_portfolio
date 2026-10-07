@@ -91,7 +91,7 @@ export function NextPage({ meta, title, sub, onClick }: { meta: string; title: s
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="t-meta">{meta}</div>
-      <button type="button" onClick={onClick} className="next text-left">
+      <button type="button" onClick={onClick} className="next text-left" data-cursor="Next">
         <div className="t-meta">Next</div>
         <div className="t-h1 mt-[3cqw] flex items-center gap-[4cqw]">
           <em>{title}</em>

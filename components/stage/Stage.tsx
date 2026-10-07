@@ -9,7 +9,9 @@ import type { RigJob } from "@/lib/curl";
 import type { Layout } from "@/lib/layout";
 import { createDirector, type Director } from "@/lib/director";
 import { bindInput } from "@/lib/input";
-import { createPeel } from "@/lib/fold";
+import { createPeel, createPeek, type Peek } from "@/lib/fold";
+import { cursorProbe } from "@/lib/cursor";
+import { Cursor } from "@/components/ui/Cursor";
 import { buildSketch, inkShelfBook } from "@/lib/sketch";
 import { overlay } from "@/lib/overlay";
 import type { Where } from "@/components/ui/IndexCard";
@@ -440,6 +442,7 @@ export function Stage({
           const a = director!.states[from].book;
           const b = director!.states[to].book;
           move = { from: a, to: b };
+          peekOff(true);
           clearLive();
           if (a !== b) setNow(b);
           setPage(to);
@@ -509,6 +512,67 @@ export function Stage({
      * Pick the page up by hand. The sheet that turns is folded where it was taken hold of and
      * follows the pointer; the timeline is only moved once it has come to rest on one side.
      */
+    // ───────── a corner that lifts when the pointer comes near it ─────────
+    let peek: { leaf: HTMLElement; corner: "top" | "bottom"; h: Peek } | null = null;
+    /** Put the lifted corner down (or, `now`, drop it at once and say where it had got to). */
+    const peekOff = (now = false) => {
+      if (!peek) return null;
+      const h = peek.h;
+      peek = null;
+      if (now) return h.drop();
+      h.release();
+      return null;
+    };
+    /** Whether the open book can be turned by hand in this direction right now. */
+    const canTurn = (d: 1 | -1) => {
+      if (!ready || !director || director.busy || overlay.open) return false;
+      const a = director.states[director.cur];
+      const b = director.states[director.cur + d];
+      return !!b && a.label !== "end" && b.label !== "end" && a.book === b.book;
+    };
+    const onHover = (ev: PointerEvent) => {
+      if (ev.pointerType !== "mouse" || ev.buttons) return;
+      if (!canTurn(1)) return void peekOff();
+      const st = director!.states[director!.cur];
+      const e = els[st.book];
+      const i = Number(st.label.slice(1));
+      const leaf = e.pageLeaves[i];
+      const L = cfg.current.layout;
+      const b = L.books[st.book];
+      // the two fore-edge corners of the right-hand page
+      const right = b.mode === "spread" ? L.cx + b.bw : L.cx + b.bw / 2;
+      const near = b.bw * 0.19;
+      const corner =
+        Math.hypot(ev.clientX - right, ev.clientY - (L.cy - b.bh / 2)) < near
+          ? "top"
+          : Math.hypot(ev.clientX - right, ev.clientY - (L.cy + b.bh / 2)) < near
+            ? "bottom"
+            : null;
+      if (!leaf || !corner) return void peekOff();
+      if (peek?.leaf === leaf && peek.corner === corner) return;
+      peekOff();
+      peek = { leaf, corner, h: createPeek({ leaf, front: e.fronts[i], back: e.backs[i] ?? null, single: e.mode === "single", corner }) };
+    };
+    if (fine) {
+      window.addEventListener("pointermove", onHover, { passive: true });
+      undo.push(() => window.removeEventListener("pointermove", onHover));
+    }
+    undo.push(() => void peekOff(true));
+    // what the cursor says at the edge of a page (no element there to say it)
+    cursorProbe.at = (x, y) => {
+      const h = hit(x, y);
+      if (!h || !director) return null;
+      const L = cfg.current.layout;
+      const b = L.books[director.states[director.cur].book];
+      if (h.side === "any") {
+        const fx = (x - (L.cx - b.bw / 2)) / b.bw;
+        return fx > 0.8 && canTurn(1) ? "Turn" : fx < 0.16 && canTurn(-1) ? "Back" : null;
+      }
+      if (Math.abs(x - L.cx) / b.bw < 0.8) return null;
+      return h.side === "R" ? (canTurn(1) ? "Turn" : null) : canTurn(-1) ? "Back" : null;
+    };
+    undo.push(() => (cursorProbe.at = null));
+
     const grab = (dir: 1 | -1, x: number, y: number) => {
       const held = director?.hold(dir);
       if (!held) return null;
@@ -516,6 +580,8 @@ export function Stage({
       const e = els[s.book];
       const i = Number(s.label.slice(1)) - (dir > 0 ? 0 : 1);
       const leaf = e.pageLeaves[i];
+      // a corner that was already lifted is carried on from where it is
+      const lifted = peek?.leaf === leaf ? peekOff(true) : (peekOff(true), null);
       if (!leaf) {
         held.end(false);
         return null;
@@ -534,6 +600,7 @@ export function Stage({
         single: e.mode === "single",
         x,
         y,
+        lifted: lifted ?? undefined,
         onStart: held.begin,
         onDone: (turned) => {
           if (dir < 0 && turned) {
@@ -847,6 +914,7 @@ export function Stage({
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />
         </div>
+        <Cursor />
       </div>
     </NavContext.Provider>
   );

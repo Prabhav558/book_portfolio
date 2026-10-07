@@ -989,6 +989,26 @@ html.stage-lock body {
 }
 .link:hover {
   color: var(--accent);
+  /* the rule runs out to the right and is drawn again from the left */
+  animation: link-rule 0.55s var(--ease-out);
+}
+@keyframes link-rule {
+  0% {
+    background-size: 100% 1px;
+    background-position: 100% 100%;
+  }
+  42% {
+    background-size: 0% 1px;
+    background-position: 100% 100%;
+  }
+  43% {
+    background-size: 0% 1px;
+    background-position: 0 100%;
+  }
+  100% {
+    background-size: 100% 1px;
+    background-position: 0 100%;
+  }
 }
 .link:hover svg {
   transform: translate(0.18em, 0);
@@ -1005,6 +1025,30 @@ html.stage-lock body {
   display: block;
   width: 100%;
   cursor: pointer;
+}
+/* entries in a list answer the pointer: the title steps forward and takes the volume's colour */
+.rows > * .t-h3,
+.rows > * .t-h2 {
+  transition: transform 0.45s var(--ease-out), color 0.25s;
+}
+.rows > article:hover .t-h3,
+.rows > a:hover .t-h3,
+.rows > button:hover .t-h3 {
+  transform: translateX(0.32em);
+  color: var(--accent);
+}
+.plate img,
+.plate-letter {
+  transition: transform 1.1s var(--ease-out);
+}
+.plate:hover img {
+  transform: scale(1.035);
+}
+.plate:hover .plate-letter {
+  transform: translate(1.2%, -1.2%);
+}
+.btn:active {
+  transform: translateY(1px);
 }
 .next-arrow {
   transition: transform 0.45s var(--ease-out);
@@ -1664,6 +1708,9 @@ html.stage-lock body {
   color: var(--paper);
   box-shadow: inset 0 0 0 1px var(--ink);
 }
+.pager-btn:active {
+  transform: scale(0.93);
+}
 .pager-btn[disabled] {
   opacity: 0.28;
   pointer-events: none;
@@ -1803,6 +1850,100 @@ html.stage-lock body {
   top: -22px;
   transform: none;
   font-size: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Cursor (components/ui/Cursor.tsx) — mouse and trackpad only
+   ══════════════════════════════════════════════════════════════════ */
+
+html.has-cursor,
+html.has-cursor * {
+  cursor: none !important;
+}
+html.has-cursor input,
+html.has-cursor textarea {
+  cursor: text !important;
+}
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  will-change: transform;
+}
+.cursor[data-on="1"] {
+  opacity: 1;
+}
+/* in a text field the ordinary caret takes over */
+.cursor[data-mode="text"] {
+  opacity: 0;
+}
+.cursor-dot {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  /* a light rim keeps it visible on the dark pages */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transition: transform 0.3s var(--ease-out), background-color 0.2s, box-shadow 0.2s;
+}
+/* over a link with nothing more to say: it opens into a ring */
+.cursor[data-mode="ring"] .cursor-dot {
+  transform: scale(3.4);
+  background: rgba(21, 21, 21, 0.08);
+  box-shadow: 0 0 0 0.35px var(--ink);
+}
+/* the word comes out beside the dot, so what is under the pointer stays in view */
+.cursor-label {
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  height: 25px;
+  padding: 0 11px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform-origin: 0 0;
+  transform: scale(0.5);
+  transition: transform 0.3s var(--ease-out), opacity 0.18s;
+}
+.cursor[data-mode="label"] .cursor-label {
+  opacity: 1;
+  transform: scale(1);
+}
+.cursor[data-fx="1"] .cursor-label {
+  left: auto;
+  right: 11px;
+  transform-origin: 100% 0;
+}
+.cursor[data-fy="1"] .cursor-label {
+  top: auto;
+  bottom: 11px;
+  transform-origin: 0 100%;
+}
+.cursor[data-fx="1"][data-fy="1"] .cursor-label {
+  transform-origin: 100% 100%;
+}
+.cursor[data-down="1"] .cursor-dot {
+  transform: scale(0.7);
+}
+.cursor[data-down="1"] .cursor-label {
+  transform: scale(0.94);
 }
 
 /* ══════════════════════════════════════════════════════════════════
