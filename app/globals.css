@@ -2088,12 +2088,10 @@ html.stage-lock body {
   transform: none;
   font-size: 12.5px;
 }
+/* (the hint used to squeeze in beside the counter and "Index"; with the arrows and the swipe there is nothing it
+   says that the controls do not, and the row was the most crowded place on the screen) */
 [data-kind="phone"] .hint {
-  left: auto;
-  right: 112px; /* just left of the two arrows */
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 14px);
-  transform: none;
-  font-size: 12px;
+  display: none;
 }
 [data-kind="phone"] .now-title {
   display: none;
@@ -2113,21 +2111,43 @@ html.stage-lock body {
 }
 /* on a phone the ledge takes the top row, so "Index" is a word between the counter and the arrows,
    and its card comes up from the bottom edge */
+/* the index is a round button in the same row as the two arrows (three of them, one family), not a word wedged
+   between the counter and the hint */
 [data-kind="phone"] .index-tab {
   top: auto;
-  right: auto;
-  left: 50%;
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 6px);
-  padding: 10px 12px;
+  left: auto;
+  right: 120px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 0;
+  letter-spacing: 0;
+  color: var(--ink);
   background: none;
-  box-shadow: none;
-  border-radius: 6px;
-  transform: translateX(-50%);
-  transition: opacity 0.5s, color 0.25s;
+  box-shadow: inset 0 0 0 1px rgba(21, 21, 21, 0.2);
+  border-radius: 50%;
+  transform: none;
+  transition: background-color 0.25s, color 0.25s;
 }
-[data-kind="phone"][data-quiet] .index-tab {
-  opacity: 0;
-  pointer-events: none;
+/* three lines of a list, the last one short */
+[data-kind="phone"] .index-tab::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 12px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 0 / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 50% / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 100% / 62% 1.5px no-repeat;
+}
+[data-kind="phone"] .index-tab:hover,
+[data-kind="phone"] .index-tab[aria-expanded="true"] {
+  transform: none;
+  color: #efe6d6;
+  background: var(--ink);
 }
 [data-kind="phone"] .index-card {
   top: auto;
@@ -3120,4 +3140,182 @@ html.has-cursor textarea {
 }
 [data-kind="tablet"] .chat {
   bottom: 130px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   A year of commits (components/pages/Activity)
+   ══════════════════════════════════════════════════════════════════ */
+
+.gh {
+  container-type: inline-size;
+  padding: 4.4cqw 4.4cqw 3.6cqw;
+  border-radius: 3.4cqw;
+  /* a plate of the volume's own paper: its tint, with the same fine rule round it as the cards in the index */
+  background: color-mix(in srgb, var(--tint) 42%, var(--paper));
+  box-shadow:
+    inset 0 0 0 1px rgba(21, 21, 21, 0.08),
+    0 1px 2px rgba(40, 32, 22, 0.05);
+}
+.gh-head {
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+}
+.gh-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 11cqw;
+  height: 11cqw;
+  border-radius: 50%;
+  color: #efe6d6;
+  background: #1f1c19;
+}
+.gh-avatar svg {
+  width: 56%;
+  height: 56%;
+}
+.gh-who {
+  display: grid;
+  line-height: 1.3;
+}
+.gh-who b {
+  font-weight: 600;
+  font-size: 1.02em;
+  color: var(--accent);
+}
+.gh-who i {
+  font-style: normal;
+  font-size: 0.76em;
+  color: var(--ink-3);
+}
+.gh-stats {
+  display: flex;
+  gap: 6cqw;
+  margin-top: 4.4cqw;
+}
+.gh-stats div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.gh-stats dd {
+  font-family: var(--serif);
+  font-size: 9.4cqw;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+.gh-stats dt {
+  margin-top: 0.5em;
+  white-space: nowrap;
+  font-size: 0.64em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.gh-map {
+  display: flex;
+  gap: 0.7cqw;
+  margin-top: 4.4cqw;
+}
+.gh-week {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7cqw;
+}
+.gh-month {
+  position: relative;
+  flex: none;
+  height: 1.4em;
+  font-size: 0.6em;
+  letter-spacing: 0.04em;
+  line-height: 1.4em;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: visible;
+}
+.gh-day {
+  display: block;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 22%;
+  background: rgba(21, 21, 21, 0.07);
+  transition: transform 0.25s var(--ease-out);
+}
+.gh-day--none {
+  visibility: hidden;
+}
+.gh-day[data-l="1"] {
+  background: color-mix(in srgb, var(--accent) 26%, var(--paper));
+}
+.gh-day[data-l="2"] {
+  background: color-mix(in srgb, var(--accent) 48%, var(--paper));
+}
+.gh-day[data-l="3"] {
+  background: color-mix(in srgb, var(--accent) 72%, var(--paper));
+}
+.gh-day[data-l="4"] {
+  background: var(--accent);
+}
+.gh-map .gh-day:hover {
+  transform: scale(1.5);
+}
+.gh-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3cqw;
+  margin-top: 3.6cqw;
+  font-size: 0.64em;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.gh-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+.gh-legend .gh-day {
+  width: 0.95em;
+  height: 0.95em;
+  aspect-ratio: auto;
+  flex: none;
+}
+.gh-legend .gh-day:first-of-type {
+  margin-left: 0.4em;
+}
+.gh-legend .gh-day:last-of-type {
+  margin-right: 0.4em;
+}
+/* on a narrow page the oldest columns step aside, so every cell stays big enough to read */
+@container (max-width: 330px) {
+  .gh-stats {
+    justify-content: space-between;
+    gap: 2cqw;
+  }
+  .gh-stats dt {
+    letter-spacing: 0.05em;
+    font-size: 0.56em;
+  }
+  .gh-week:nth-child(-n + 21) {
+    display: none;
+  }
+}
+
+/* a label and its list: side by side while the page is wide enough, the label above the list when it is not */
+.kit-row {
+  display: grid;
+  grid-template-columns: 7.4em 1fr;
+  align-items: baseline;
+  gap: 1em;
+}
+@container (max-width: 360px) {
+  .kit-row {
+    grid-template-columns: 1fr;
+    gap: 0.35em;
+  }
 }

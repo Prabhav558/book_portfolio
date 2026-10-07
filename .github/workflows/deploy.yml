@@ -4,6 +4,9 @@ on:
   push:
     branches: [revamp]
   workflow_dispatch:
+  # a nightly rebuild keeps the GitHub activity page current (GitHub runs scheduled workflows from the default branch only)
+  schedule:
+    - cron: "41 2 * * *"
 
 permissions:
   contents: read
@@ -26,6 +29,12 @@ jobs:
           cache: npm
 
       - run: npm install
+
+      - name: Refresh GitHub activity
+        # writes content/github.json; if it cannot reach GitHub it leaves the last good copy alone (tools/github.mjs)
+        run: node tools/github.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build static export
         run: npm run build

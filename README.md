@@ -51,6 +51,7 @@ Around the book there is a quiet miniature library: shelves, a desk, a reading c
 
 - **Chat** (`components/ui/ChatBot.tsx`, `lib/chat/brain.ts`): the round button on the left opens into "Hey, Prabhav here. Ask anything about me". It is not a language model and says so: every answer is composed from `content/portfolio.ts` (work, projects, skills, education, contact), so editing that file edits the answers. Nothing leaves the browser. To make it a real model later, put a small proxy in front of an API (never ship an API key in this static site) and have `reply()` call it.
 - **Right-hand tab** (`components/ui/SideDock.tsx`): GitHub, LinkedIn, résumé and email, on the right border from 1100 px wide up.
+- **GitHub activity page** (Experience volume, `components/pages/Activity.tsx`): a year of public commits as a heat map in the volume's colour. It reads `content/github.json`, which `node tools/github.mjs` rewrites from your public contribution calendar before every deploy (and nightly), so nothing is fetched in the browser and no token is shipped. Run the script yourself to refresh it locally.
 - **Rolling line** (`components/ui/RollText.tsx`): the role on the cover rolls over to `profile.altRole` on hover, focus or tap.
 
 ## How it works

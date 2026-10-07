@@ -96,7 +96,7 @@ function Toolkit() {
         </h2>
         <div className="rows mt-[7cqw]">
           {skills.map((g) => (
-            <div key={g.group} className="grid grid-cols-[7.4em_1fr] items-baseline gap-[1em]">
+            <div key={g.group} className="kit-row">
               <span className="t-meta">{g.group}</span>
               <span className="text-[0.98em] text-[var(--ink)]">{g.items.join(", ")}</span>
             </div>

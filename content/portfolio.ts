@@ -16,6 +16,7 @@ export const profile = {
   tagline: "I build agentic AI systems that show their evidence, on backends that hold up in production.",
   location: "Chennai, India",
   email: "prabhavkeshwar@gmail.com",
+  whatsapp: "https://wa.me/917309464842",
   availability: "Graduating 2027, open to full-time AI engineering roles",
   resumeUrl: asset("/resume.pdf"),
   about: [

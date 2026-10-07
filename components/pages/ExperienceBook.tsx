@@ -3,6 +3,7 @@
 import { awards, education, experience, learning, type Role } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
 import { PALETTE } from "@/content/palette";
+import { Activity } from "./Activity";
 import { CoverTitle, NextPage, Opener, QuotePage, useNav } from "./primitives";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -99,6 +100,7 @@ const blocks: Block[] = [
   },
   { id: "timeline", name: "Timeline", full: true, node: <Timeline /> },
   ...experience.map((r, i): Block => ({ id: `role-${i}`, name: r.company, full: true, node: <RolePage r={r} index={i} /> })),
+  { id: "activity", name: "GitHub activity", full: true, node: <Activity /> },
   { id: "education", name: "Education", full: true, node: <Education /> },
   { id: "end", full: true, node: <End /> },
 ];

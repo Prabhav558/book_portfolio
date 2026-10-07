@@ -131,9 +131,9 @@ const TOPICS: Topic[] = [
   },
   {
     id: "contact",
-    keys: [["contact", 5], ["email", 5], ["mail", 4], ["reach", 4], ["get in touch", 5], ["talk", 2], ["message", 3], ["linkedin", 4], ["social", 3], ["socials", 3], ["phone", 3], ["number", 2], ["write to", 3], ["connect", 3], ["hire", 2]],
+    keys: [["contact", 5], ["email", 5], ["mail", 4], ["reach", 4], ["get in touch", 5], ["talk", 2], ["message", 3], ["linkedin", 4], ["social", 3], ["socials", 3], ["phone", 3], ["number", 2], ["whatsapp", 5], ["whats app", 5], ["wa", 1], ["write to", 3], ["connect", 3], ["hire", 2]],
     answer: () => ({
-      text: `Best way: ${profile.email}. You can also find me on ${list(socials.map((s) => `${s.label} (${s.url})`))}. There's also a letter form in the last volume of this book, and my résumé is a download away.`,
+      text: `Best way: ${profile.email}, or message me on WhatsApp (${profile.whatsapp}). You can also find me on ${list(socials.map((s) => `${s.label} (${s.url})`))}. There's also a letter form in the last volume of this book, and my résumé is a download away.`,
       chips: ["Are you available?", "Can I see your résumé?"],
     }),
   },

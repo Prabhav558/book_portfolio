@@ -25,9 +25,10 @@ const GLYPH: Record<string, ReactNode> = {
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4" />
     </Icon>
   ),
-  Email: (
+  WhatsApp: (
     <Icon>
-      <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 7l9 6 9-6" />
+      <path d="M3 21l1.65-4.9A8.5 8.5 0 1 1 8 19.4L3 21z" />
+      <path d="M9.2 8.6c-.3.5-.3 1.5.6 2.8s2.1 2.2 3.3 2.7c.9.4 1.6.1 2-.4l.3-.6-1.8-1-.7.7c-.8-.3-1.8-1.3-2.2-2.2l.7-.7-.9-1.8-.5.1c-.3.1-.6.2-.8.4z" />
     </Icon>
   ),
 };
@@ -40,7 +41,7 @@ export function SideDock() {
   const items: { label: string; href: string; download?: boolean; external?: boolean }[] = [
     ...socials.filter((s) => s.label === "GitHub" || s.label === "LinkedIn").map((s) => ({ label: s.label, href: s.url, external: true })),
     { label: "Résumé", href: profile.resumeUrl, download: true },
-    { label: "Email", href: `mailto:${profile.email}` },
+    { label: "WhatsApp", href: profile.whatsapp, external: true },
   ];
   return (
     <nav className="dock" aria-label="Find me elsewhere">
@@ -51,7 +52,7 @@ export function SideDock() {
           href={i.href}
           download={i.download}
           {...(i.external ? { target: "_blank", rel: "noreferrer" } : {})}
-          data-cursor={i.download ? "save" : i.external ? "visit" : "write"}
+          data-cursor={i.download ? "save" : "visit"}
         >
           {GLYPH[i.label]}
           <span className="dock-label">{i.label}</span>
