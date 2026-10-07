@@ -752,7 +752,10 @@ html.stage-lock body {
 .clasp {
   position: absolute;
   inset: 0;
-  transform-origin: 100% 50%;
+  /* the hinge is the barrel, at the fore-edge and halfway through the thickness of the book:
+     swung away it goes over the edge and behind the boards, not off into the air */
+  transform-origin: 100% 50% calc(var(--T) * -0.5 - 1.5px);
+  touch-action: none;
   cursor: pointer;
   pointer-events: auto;
   background: none;
@@ -828,6 +831,9 @@ html.stage-lock body {
   overflow: hidden;
   transition: filter 0.4s, box-shadow 0.4s var(--ease-out);
   background:
+    /* the lamp: a highlight that follows the pointer across the steel, and a brushed streak that slides with a pull */
+    radial-gradient(70% 95% at calc(var(--mx, 0.3) * 100%) calc(var(--my, 0.15) * 100%), rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 64%),
+    linear-gradient(104deg, rgba(255, 255, 255, 0) calc(var(--mx, 0.3) * 100% - 20%), rgba(255, 255, 255, 0.34) calc(var(--mx, 0.3) * 100% + var(--slide, 0) * 40%), rgba(255, 255, 255, 0) calc(var(--mx, 0.3) * 100% + 20%)),
     /* two rivets that hold the plate to the strap */
     radial-gradient(circle 2.2px at 74% 20%, #fff 0 22%, #7e868e 40%, rgba(60, 70, 80, 0.5) 62%, rgba(0, 0, 0, 0) 66%),
     radial-gradient(circle 2.2px at 74% 80%, #fff 0 22%, #7e868e 40%, rgba(60, 70, 80, 0.5) 62%, rgba(0, 0, 0, 0) 66%),

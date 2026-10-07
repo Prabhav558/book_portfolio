@@ -104,7 +104,7 @@ export const IntroControls = forwardRef<HTMLDivElement, { onSkip: () => void; to
   return (
     <div ref={ref} className="chrome intro-bar">
       <span data-intro-hint className="intro-hint">
-        {touch ? "Tap the clasp to open" : "Click the clasp to open"}
+        {touch ? "Slide the clasp to unlatch it" : "Pull the clasp to unlatch it"}
       </span>
       <button type="button" onClick={onSkip} data-skip data-cursor="skip" className="skip">
         Skip intro

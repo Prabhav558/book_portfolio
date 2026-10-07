@@ -684,7 +684,90 @@ export function Stage({
       cfg.current.onIntroDone();
     }
 
-    const openBook = (opts: { fast?: boolean; instant?: boolean } = {}) => {
+    // ───────── the clasp is a latch: slide the plate to unhook it ─────────
+    const plate = clasp.querySelector<HTMLElement>(".clasp-plate");
+    const strap = clasp.querySelector<HTMLElement>(".clasp-strap");
+    const barrel = clasp.querySelector<HTMLElement>(".clasp-barrel");
+    const glow = clasp.querySelector<HTMLElement>(".clasp-glow");
+    const travel = () => clasp.offsetWidth * 0.4;
+    let pull: { id: number; x0: number; p: number; detent: boolean; moved: boolean } | null = null;
+    let swallow = false;
+    /** The steel catches the light where the pointer is, so it reads as metal under a lamp. */
+    const light = (ev: PointerEvent) => {
+      const r = clasp.getBoundingClientRect();
+      clasp.style.setProperty("--mx", clamp((ev.clientX - r.left) / r.width, 0, 1).toFixed(3));
+      clasp.style.setProperty("--my", clamp((ev.clientY - r.top) / r.height, 0, 1).toFixed(3));
+    };
+    /** Resistance: the plate follows the finger a little less than the whole way, and the strap stretches. */
+    const setPull = (p: number) => {
+      gsap.set(plate, { x: -travel() * 0.9 * p });
+      gsap.set(strap, { scaleX: 1 - 0.03 * p, transformOrigin: "100% 50%" });
+      clasp.style.setProperty("--slide", p.toFixed(3));
+    };
+    const springBack = () => {
+      gsap.to(plate, { x: 0, duration: 0.7, ease: "elastic.out(1.1, 0.35)", overwrite: true });
+      gsap.to(strap, { scaleX: 1, duration: 0.5, ease: "elastic.out(1.1, 0.4)", overwrite: true });
+      clasp.style.setProperty("--slide", "0");
+    };
+    const onClaspEnter = (ev: PointerEvent) => {
+      if (opened || pull || ev.pointerType !== "mouse") return;
+      // the catch is tried, the way a thumb tests a lock
+      gsap.fromTo(plate, { x: 0 }, { x: -2.2, duration: 0.07, yoyo: true, repeat: 3, ease: "sine.inOut", overwrite: "auto" });
+    };
+    const onClaspDown = (ev: PointerEvent) => {
+      if (opened || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+      pull = { id: ev.pointerId, x0: ev.clientX, p: 0, detent: false, moved: false };
+      clasp.setPointerCapture(ev.pointerId);
+      gsap.killTweensOf(plate);
+      gsap.to(plate, { scale: 0.97, duration: 0.1, overwrite: "auto" });
+      light(ev);
+    };
+    const onClaspMove = (ev: PointerEvent) => {
+      light(ev);
+      if (!pull || ev.pointerId !== pull.id || opened) return;
+      const dx = pull.x0 - ev.clientX; // toward the spine
+      if (dx > 5) pull.moved = true;
+      pull.p = clamp(dx / travel(), 0, 1);
+      setPull(pull.p);
+      if (!pull.detent && pull.p > 0.55) {
+        pull.detent = true;
+        navigator.vibrate?.(8);
+        sound.play("shelf");
+      }
+      if (pull.p >= 1) {
+        pull = null;
+        swallow = true;
+        window.setTimeout(() => (swallow = false), 0);
+        openBook({ pulled: true });
+      }
+    };
+    const onClaspUp = (ev: PointerEvent) => {
+      if (!pull || ev.pointerId !== pull.id) return;
+      const was = pull;
+      pull = null;
+      if (clasp.hasPointerCapture(ev.pointerId)) clasp.releasePointerCapture(ev.pointerId);
+      gsap.to(plate, { scale: 1, duration: 0.25, overwrite: "auto" });
+      if (was.moved) {
+        // let go before it gave way: it snaps back, and the click that follows is not an unlatch
+        swallow = true;
+        window.setTimeout(() => (swallow = false), 0);
+        springBack();
+      }
+    };
+    clasp.addEventListener("pointerenter", onClaspEnter);
+    clasp.addEventListener("pointerdown", onClaspDown);
+    clasp.addEventListener("pointermove", onClaspMove);
+    clasp.addEventListener("pointerup", onClaspUp);
+    clasp.addEventListener("pointercancel", onClaspUp);
+    undo.push(() => {
+      clasp.removeEventListener("pointerenter", onClaspEnter);
+      clasp.removeEventListener("pointerdown", onClaspDown);
+      clasp.removeEventListener("pointermove", onClaspMove);
+      clasp.removeEventListener("pointerup", onClaspUp);
+      clasp.removeEventListener("pointercancel", onClaspUp);
+    });
+
+    const openBook = (opts: { fast?: boolean; instant?: boolean; pulled?: boolean } = {}) => {
       if (opened || !director) return;
       opened = true;
       sound.unlock();
@@ -701,31 +784,37 @@ export function Stage({
         finishIntro();
         return;
       }
-      const plate = clasp.querySelector<HTMLElement>(".clasp-plate");
-      const strap = clasp.querySelector<HTMLElement>(".clasp-strap");
-      const barrel = clasp.querySelector<HTMLElement>(".clasp-barrel");
-      const glow = clasp.querySelector<HTMLElement>(".clasp-glow");
+      // the latch lets go (pressed, or already slid), then the strap swings out around the fore-edge, over
+      // and away behind the book, and is tucked out of sight
+      const reach = clasp.offsetWidth;
+      const t0 = opts.pulled ? 0.12 : 0.3;
       const o = gsap.timeline();
-      // three beats: the thumb presses the plate down, the catch lets go and springs, then the strap swings clear
-      o.add(() => sound.play("clasp"), 0.04)
+      o.add(() => sound.play("clasp"), opts.pulled ? 0 : 0.04)
         .to(introRef.current, { autoAlpha: 0, duration: 0.4 }, 0)
-        .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.8, ease: "power2.out" }, 0)
+        .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.9, ease: "power2.out" }, 0)
         .to(clasp, { rotation: 0, duration: 0.1, ease: "power2.out" }, 0)
         // the hover glow would show its box edge once the clasp turns in 3D
-        .to(glow, { opacity: 0, duration: 0.12 }, 0)
-        .to(plate, { scale: 0.93, duration: 0.1, ease: "power2.out" }, 0)
-        .to(strap, { scaleX: 0.97, transformOrigin: "100% 50%", duration: 0.1, ease: "power2.out" }, 0)
-        .to(plate, { xPercent: -14, scale: 1.04, duration: 0.18, ease: "back.out(3)" }, 0.1)
-        .to(barrel, { x: 2.5, duration: 0.06, ease: "power1.out", yoyo: true, repeat: 3 }, 0.1)
-        .to(strap, { scaleX: 1, duration: 0.2, ease: "elastic.out(1.4, 0.5)" }, 0.12)
-        .to(clasp, { rotationY: 168, rotation: -2.5, duration: 0.85, ease: "power3.inOut" }, 0.28)
-        .to(clasp, { opacity: 0, duration: 0.3, ease: "power1.in" }, 0.8)
-        // gone for good: an invisible button must not sit on top of the page
-        .set(clasp.parentElement, { display: "none" }, 1.12)
+        .to(glow, { opacity: 0, duration: 0.12 }, 0);
+      if (!opts.pulled) {
+        o.to(plate, { scale: 0.93, duration: 0.1, ease: "power2.out" }, 0).to(
+          strap,
+          { scaleX: 0.97, transformOrigin: "100% 50%", duration: 0.1, ease: "power2.out" },
+          0,
+        );
+      }
+      o.to(plate, { x: -travel() * 1.15, scale: 1.04, duration: 0.16, ease: "back.out(3)" }, opts.pulled ? 0 : 0.1)
+        .to(barrel, { x: 2.5, duration: 0.06, ease: "power1.out", yoyo: true, repeat: 3 }, opts.pulled ? 0 : 0.1)
+        .to(strap, { scaleX: 1, duration: 0.22, ease: "elastic.out(1.4, 0.5)" }, opts.pulled ? 0.05 : 0.12)
+        // away from the viewer: over the edge and behind the book
+        .to(clasp, { rotationY: -180, rotation: 1.5, duration: 1.05, ease: "power2.inOut" }, t0)
+        .to(plate, { x: 0, scale: 1, duration: 0.5, ease: "power2.inOut" }, t0 + 0.2)
+        // now it hangs outside the fore-edge; it slips in beneath the board
+        .to(clasp, { x: -reach * 1.04, duration: 0.42, ease: "power2.in" }, t0 + 1.0)
+        .set(clasp.parentElement, { display: "none" }, t0 + 1.5)
         .add(() => {
           sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
-        }, 0.62);
+        }, t0 + 0.45);
     };
     // the closed book opens from the keyboard too, wherever the focus happens to be
     const onIntroKey = (ev: KeyboardEvent) => {
@@ -738,7 +827,7 @@ export function Stage({
     };
     window.addEventListener("keydown", onIntroKey);
     undo.push(() => window.removeEventListener("keydown", onIntroKey));
-    api.current.open = () => openBook();
+    api.current.open = () => (swallow ? void 0 : openBook());
     api.current.skip = () => openBook({ fast: true });
     api.current.goToBook = (i: number) => director?.jump(director.stateOfBook(i));
     api.current.goToStart = () => director?.jump(0);
