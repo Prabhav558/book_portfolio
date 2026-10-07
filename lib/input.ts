@@ -20,20 +20,45 @@ export function bindInput(o: {
   grab: (dir: 1 | -1, x: number, y: number) => Grab | null;
 }) {
   // ───────── wheel ─────────
+  // A turn needs a deliberate gesture: about one mouse-wheel notch, or a firm trackpad swipe, added up.
+  // After a turn the rest of that gesture (a trackpad's long inertia tail, a wheel spun fast) is ignored;
+  // the next turn waits for a pause or a fresh, stronger push.
+  const NEED = 80;
+  const COOL = 520;
   let lastWheel = 0;
   let lastAbs = 0;
+  let lastSign = 0;
+  let acc = 0;
+  let open = true;
+  let lockUntil = 0;
   const onWheel = (e: WheelEvent) => {
     if (e.ctrlKey) return; // pinch-zoom on trackpads
     if (!o.enabled()) return;
     e.preventDefault();
-    const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const raw = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    // lines and pages (some browsers, some mice) are brought to pixels
+    const d = raw * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
     const abs = Math.abs(d);
+    if (abs < 1) return;
+    const sign = d > 0 ? 1 : -1;
     const now = performance.now();
-    const fresh = now - lastWheel > 110 || abs > lastAbs * 1.7 + 12;
+    const gap = now - lastWheel;
+    const fresh = gap > 170 || abs > lastAbs * 1.8 + 20 || sign !== lastSign;
     lastWheel = now;
     lastAbs = abs;
-    if (abs < 4 || !fresh) return;
-    o.step(d > 0 ? 1 : -1);
+    lastSign = sign;
+    if (fresh) {
+      acc = 0;
+      open = true;
+    }
+    if (!open || now < lockUntil) return;
+    acc += d;
+    if (Math.abs(acc) >= NEED) {
+      o.step(acc > 0 ? 1 : -1);
+      acc = 0;
+      open = false;
+      lockUntil = now + COOL;
+    }
   };
 
   // ───────── pointer: drag a page, or swipe ─────────

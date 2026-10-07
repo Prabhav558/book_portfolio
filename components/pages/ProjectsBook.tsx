@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { extraHighlights, featuredProjects, moreProjects, type Project } from "@/content/portfolio";
 import type { Block, BookDef } from "@/components/book/types";
 import { PALETTE } from "@/content/palette";
+import { projectPopup } from "@/lib/popup";
 import { CoverTitle, NextPage, Opener, QuotePage, TextLink, useNav } from "./primitives";
 
 const all = [...featuredProjects, ...moreProjects];
@@ -157,9 +158,21 @@ function More({ items, from }: { items: Project[]; from: number }) {
       </div>
       <div className="rows">
         {items.map((p) => (
-          <article key={p.title}>
+          // the whole entry opens its card (the links keep their own click); the title is the real button, for the keyboard
+          <article
+            key={p.title}
+            data-cursor="go"
+            className="cursor-pointer"
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest("a, button")) projectPopup.open(p);
+            }}
+          >
             <div className="flex items-baseline justify-between gap-[1em]">
-              <h3 className="t-h3">{p.title}</h3>
+              <h3 className="t-h3">
+                <button type="button" className="proj-open" onClick={() => projectPopup.open(p)} aria-haspopup="dialog">
+                  {p.title}
+                </button>
+              </h3>
               <span className="t-fig">{p.year}</span>
             </div>
             <p className="t-body mt-[0.25em]">{p.summary}</p>

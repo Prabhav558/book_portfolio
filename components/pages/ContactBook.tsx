@@ -157,9 +157,6 @@ function Colophon() {
         <p className="t-h1">
           Thank <em>you.</em>
         </p>
-        <p className="t-body mt-[5cqw] max-w-[19em]">
-          Set in Instrument Serif and Instrument Sans. Built with Next.js, animated with GSAP, lit with Three.js.
-        </p>
       </div>
       <div>
         <TextLink onClick={goToStart}>Back to the beginning</TextLink>

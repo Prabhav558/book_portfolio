@@ -2488,3 +2488,142 @@ html.has-cursor textarea {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   A project's card — laid over the book
+   ══════════════════════════════════════════════════════════════════ */
+
+.proj-open {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pop-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(34, 28, 20, 0.2);
+  pointer-events: auto;
+}
+.pop-card {
+  width: min(480px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 22px 28px 26px;
+  color: var(--ink);
+  background: var(--paper-grain), #fbf9f3;
+  background-size: 240px 240px, auto;
+  border-radius: 12px;
+  box-shadow:
+    0 2px 4px rgba(40, 32, 22, 0.14),
+    0 30px 70px rgba(40, 32, 22, 0.3);
+}
+.pop-card::-webkit-scrollbar {
+  display: none;
+}
+.pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pop-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: -12px -14px -12px 0;
+  border-radius: 50%;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.25s, color 0.25s;
+}
+.pop-close svg {
+  width: 14px;
+  height: 14px;
+}
+.pop-close:hover {
+  background: rgba(21, 21, 21, 0.07);
+  color: var(--ink);
+}
+.pop-title {
+  margin-top: 18px;
+  font-family: var(--serif);
+  font-size: 40px;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+.pop-summary {
+  margin-top: 14px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.pop-points {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.pop-points li {
+  position: relative;
+  padding-left: 16px;
+}
+.pop-points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 1px;
+  background: var(--ink-3);
+}
+.pop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 20px;
+}
+.pop-tags span {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  border: 1px solid rgba(21, 21, 21, 0.16);
+}
+.pop-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+  font-size: 14px;
+}
+[data-kind="phone"] .pop-veil {
+  align-items: end;
+  padding: 10px;
+}
+[data-kind="phone"] .pop-card {
+  max-height: 82dvh;
+  padding: 20px 22px 24px;
+}
+[data-kind="phone"] .pop-title {
+  font-size: 34px;
+}

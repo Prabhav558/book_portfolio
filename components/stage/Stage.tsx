@@ -21,6 +21,7 @@ import type { Paged } from "@/components/book/Paginator";
 import { Clasp } from "@/components/intro/Clasp";
 import { Shelf } from "@/components/shelf/Shelf";
 import { WorldCanvas } from "@/components/world/WorldCanvas";
+import { ProjectPopup } from "@/components/ui/ProjectPopup";
 import type { WorldEngine } from "@/lib/world/engine";
 import type { Rect } from "@/lib/world/types";
 import { IntroControls, Pager, ScrollHint, TopBar } from "@/components/ui/Chrome";
@@ -1140,6 +1141,7 @@ export function Stage({
           <Pager ref={nowRef} onPrev={() => api.current.step(-1)} onNext={() => api.current.step(1)} />
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />
+          <ProjectPopup />
         </div>
         <Cursor />
       </div>

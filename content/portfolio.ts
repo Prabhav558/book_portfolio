@@ -56,6 +56,8 @@ export type Project = {
   tags: string[];
   live?: string;
   code?: string;
+  /** A few more lines for the project's card (what it does, what was hard). Optional. */
+  details?: string[];
   /**
    * Up to two pictures for a featured project, shown on the left-hand page, e.g.
    * ["/work/ledgerline-1.jpg", "/work/ledgerline-2.jpg"] (put the files in /public/work).
@@ -87,6 +89,11 @@ export const moreProjects: Project[] = [
     title: "SafePath",
     year: "2025",
     summary: "Flutter safety app that scores routes against local crime data, with one-tap and voice SOS.",
+    details: [
+      "Scores candidate routes against local crime-incident data, weighting by how close each comes to reported incidents, and recommends the lower-risk path.",
+      "One-tap and voice-activated SOS alerts a pre-set list of emergency contacts.",
+      "Unsafe places can be reported anonymously, with no account.",
+    ],
     tags: ["Flutter", "Dart", "Python"],
   },
   {
