@@ -39,6 +39,9 @@ type Leaf = {
   single: boolean;
 };
 
+/** The state a sheet was in before any lift of it began, with how many lifts are using it. */
+const ORIGINAL = new WeakMap<HTMLElement, { n: number; transform: string; origin: string }>();
+
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const smooth = (a: number, b: number, x: number) => {
   const t = clamp((x - a) / (b - a), 0, 1);
@@ -91,7 +94,13 @@ function mount(o: Leaf, lift: boolean) {
     make("paper", flap).dataset.side = "L";
     made.push(flap);
   }
-  const before = { transform: flap.style.transform, origin: flap.style.transformOrigin };
+  // What the sheet looked like before anything touched it. A corner can be lifted a second time while the first
+  // is still being put down, so the original is kept once per sheet and handed back when the last one is done;
+  // read off the sheet itself it would be the first lift's leftover, and would be "restored" for good.
+  let kept = ORIGINAL.get(flap);
+  if (kept) kept.n++;
+  else ORIGINAL.set(flap, (kept = { n: 1, transform: flap.style.transform, origin: flap.style.transformOrigin }));
+  const before = kept;
   const under = make("fold-under", inner);
   const underG = make("fold-under-g", under);
   const cast = make("fold-cast", inner);
@@ -176,15 +185,21 @@ function mount(o: Leaf, lift: boolean) {
     cast.style.opacity = (smooth(0, 0.5 * W, d) * (1 - smooth(0.86, 1, t)) * (o.single ? 1 - smooth(0.5, 0.9, t) : 1)).toFixed(3);
   }
 
-  /** Put everything back exactly as it was found. */
+  /** Put everything back exactly as it was found (once the last lift of this sheet is done). */
+  let gone = false;
   function unmount() {
+    if (gone) return;
+    gone = true;
+    made.forEach((el) => el.remove());
+    before.n--;
+    if (before.n > 0) return;
+    ORIGINAL.delete(flap);
     front.style.clipPath = "";
     flap.style.clipPath = "";
     flap.style.visibility = "";
     flap.style.opacity = "";
     flap.style.transform = before.transform;
     flap.style.transformOrigin = before.origin;
-    made.forEach((el) => el.remove());
     leaf.classList.remove("folding");
   }
 
