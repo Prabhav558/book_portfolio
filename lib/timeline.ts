@@ -233,8 +233,10 @@ export function buildBook(
     const bend = e.bends[i];
     const prox = { p: 0 };
     let state = 0 as 0 | 1 | 2;
+    let swap = 0;
 
     const rest = (turned: boolean) => {
+      if (swap) swap = (cancelAnimationFrame(swap), 0);
       rig.classList.remove("on");
       if (turned) {
         if (single) leaf.style.visibility = "hidden";
@@ -270,7 +272,11 @@ export function buildBook(
         state = 2;
         fillJob(e, i).flush(); // normally finished long ago, in idle time
         rig.classList.add("on");
-        leaf.style.visibility = "hidden";
+        // the flat sheet and the leaf look the same, so the leaf stays two frames under the sheet:
+        // a phone that has not yet painted the sheet's layers then never shows a blank page
+        leaf.style.visibility = "";
+        if (swap) cancelAnimationFrame(swap);
+        swap = requestAnimationFrame(() => (swap = requestAnimationFrame(() => (swap = 0, state === 2 && (leaf.style.visibility = "hidden")))));
       }
       applyCurl(bend, p, END, single);
       if (castUnderEl) castUnderEl.style.opacity = castUnder(p).toFixed(3);
