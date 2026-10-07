@@ -86,7 +86,7 @@ export default function Experience() {
           <button
             type="button"
             onClick={() => setOptIn(true)}
-            className="rounded-full border border-black/15 px-3 py-2 tracking-[0.2em] uppercase hover:border-black/35 hover:text-[var(--ivory)]"
+            className="link"
           >
             Animated version
           </button>

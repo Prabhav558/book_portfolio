@@ -12,7 +12,7 @@
 
 export type Bend = {
   strips: HTMLElement[];
-  /** front-face overlays: [darkens toward left, darkens toward right] per strip */
+  /** per strip and face: a = flat tone, b = ramp that darkens toward the right (mirrored when needed) */
   fa: HTMLElement[];
   fb: HTMLElement[];
   ba: HTMLElement[];
@@ -67,6 +67,19 @@ function shadeBack(aRad: number) {
 const D2R = Math.PI / 180;
 
 /**
+ * Darkness l at a strip's left edge, r at its right, linear in between.
+ * Two stacked ramps would multiply and leave a pale band mid-strip (pleats); a flat
+ * layer at the lighter value plus one ramp for the difference composites exactly.
+ */
+function tone(flat: HTMLElement, ramp: HTMLElement, l: number, r: number) {
+  const lo = Math.min(l, r);
+  const hi = Math.max(l, r);
+  flat.style.opacity = lo.toFixed(3);
+  ramp.style.opacity = ((hi - lo) / (1 - lo)).toFixed(3);
+  ramp.style.transform = l > r ? "scaleX(-1)" : "none";
+}
+
+/**
  * @param end  final spine angle: -180 for a two-page spread, about -165 for single pages
  * @param fade single-page mode fades the sheet out as it leaves
  */
@@ -95,17 +108,14 @@ export function applyCurl(b: Bend, p: number, end = -180, fade = false) {
 
   // shading at each hinge, interpolated across strips
   const hinge = (j: number) => (j <= 0 ? world[0] : j >= n ? world[n - 1] : (world[j - 1] + world[j]) / 2) * D2R;
-  const STRENGTH = 0.82;
+  // paper is translucent and the room is bright, so even the side turned from the lamp stays fairly light
+  const STRENGTH = 0.46;
   for (let k = 0; k < n; k++) {
     const l = hinge(k);
     const r = hinge(k + 1);
-    b.fa[k].style.opacity = (shadeFront(l) * STRENGTH).toFixed(3);
-    b.fb[k].style.opacity = (shadeFront(r) * STRENGTH).toFixed(3);
-    if (b.ba[k]) {
-      // a back face is mirrored: its local left is the strip's world right
-      b.ba[k].style.opacity = (shadeBack(r) * STRENGTH).toFixed(3);
-      b.bb[k].style.opacity = (shadeBack(l) * STRENGTH).toFixed(3);
-    }
+    tone(b.fa[k], b.fb[k], shadeFront(l) * STRENGTH, shadeFront(r) * STRENGTH);
+    // a back face is mirrored: its local left is the strip's world right
+    if (b.ba[k]) tone(b.ba[k], b.bb[k], shadeBack(r) * STRENGTH, shadeBack(l) * STRENGTH);
   }
 
   if (fade) {

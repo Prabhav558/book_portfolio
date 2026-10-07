@@ -1,209 +1,214 @@
 import { gsap } from "./gsap";
 
 /**
- * Builds the opening pencil sketch: the diary, its clasp, the shelf and the
- * three volumes waiting on it, drawn stroke by stroke with a moving graphite
- * nib. Coordinates come from the real layout, so the sketch lands exactly on
- * what the lights then reveal.
+ * The opening drawing.
+ *
+ * The first volume is drawn in ink exactly over where the real book lies: the cover opens
+ * out from its binding, the two halves of the line close at the clasp, the tooling and the
+ * lettering follow, then the ledge grows from its middle and the other volumes rise from it.
+ * Every stroke starts on the object's own axis or where another stroke ended, so nothing
+ * arrives from nowhere. And because the drawing is registered to the real scene, the sheet
+ * it is drawn on can simply dissolve: the lines become the thing itself.
  */
 
 export type Rect = { x: number; y: number; w: number; h: number };
+
+export type SketchLayout = {
+  /** the first volume's cover as it lies on the table */
+  book: Rect;
+  /** width of the oak band along the binding */
+  band: number;
+  /** corner radii of the cover: at the fore-edge and at the binding */
+  radius: { fore: number; spine: number };
+  /** the cover icon's square (48 units a side — see CoverIcon) */
+  icon: Rect | null;
+  /** lettering on the cover; redrawn as ink in the same place */
+  labels: HTMLElement[];
+  clasp: { plate: Rect | null; strap: Rect | null; barrel: Rect | null };
+  plank: Rect | null;
+  /** the other volumes, standing on the ledge */
+  shelfBooks: Rect[];
+};
+
 const NS = "http://www.w3.org/2000/svg";
-const rnd = (a: number) => (Math.random() * 2 - 1) * a;
-/** Global pencil speed — strokes are authored in px/s at 1×. */
-const SP = 4.6;
+const INK = "#1b1a18";
+/** One number to make the whole drawing quicker or slower. */
+const PACE = 0.88;
+const f = (n: number) => n.toFixed(1);
 
-type Stroke = { d: string; len: number; w: number; o: number; speed: number; nib: boolean; overlap?: number };
+type Stroke = { d: string; at: number; dur: number; w?: number; o?: number; ease?: string };
 
-/** A slightly wandering line with a little overshoot at each end, like a pencil stroke. */
-function line(x1: number, y1: number, x2: number, y2: number, amp = 0.9, over = 5): { d: string; len: number } {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len0 = Math.hypot(dx, dy) || 1;
-  const ux = dx / len0;
-  const uy = dy / len0;
-  const o1 = over * (0.4 + Math.random() * 0.8);
-  const o2 = over * (0.4 + Math.random() * 0.8);
-  const ax = x1 - ux * o1;
-  const ay = y1 - uy * o1;
-  const bx = x2 + ux * o2;
-  const by = y2 + uy * o2;
-  const len = len0 + o1 + o2;
-  const n = Math.max(2, Math.round(len / 48));
-  const nx = -uy;
-  const ny = ux;
-  const pts: [number, number][] = [[ax + nx * rnd(amp * 0.6), ay + ny * rnd(amp * 0.6)]];
-  for (let i = 1; i <= n; i++) {
-    const t = i / n;
-    const o = rnd(amp) * (i === n ? 0.5 : 1);
-    pts.push([ax + (bx - ax) * t + nx * o, ay + (by - ay) * t + ny * o]);
-  }
-  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i][0] + pts[i + 1][0]) / 2;
-    const my = (pts[i][1] + pts[i + 1][1]) / 2;
-    d += ` Q${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;
-  }
-  const last = pts[pts.length - 1];
-  d += ` L${last[0].toFixed(1)},${last[1].toFixed(1)}`;
-  return { d, len };
-}
-
-/** A loose handwriting-like wave for the title lines. */
-function scribble(x: number, y: number, w: number, amp = 3): { d: string; len: number } {
-  const n = Math.max(4, Math.round(w / 14));
-  let d = `M${x.toFixed(1)},${y.toFixed(1)}`;
-  for (let i = 1; i <= n; i++) {
-    const cx = x + (w * (i - 0.5)) / n;
-    const ex = x + (w * i) / n;
-    d += ` Q${cx.toFixed(1)},${(y + rnd(amp)).toFixed(1)} ${ex.toFixed(1)},${(y + rnd(amp * 0.4)).toFixed(1)}`;
-  }
-  return { d, len: w * 1.12 };
-}
-
-function box(r: Rect, o: { amp?: number; w: number; op: number; speed: number; nib: boolean; over?: number }): Stroke[] {
+/** Rounded rectangle, drawn clockwise from the middle of its left side (or anticlockwise from the right). */
+function rrect(r: Rect, rad: number, fromRight = false) {
   const { x, y, w, h } = r;
-  const edges: [number, number, number, number][] = [
-    [x, y, x + w, y],
-    [x + w, y, x + w, y + h],
-    [x + w, y + h, x, y + h],
-    [x, y + h, x, y],
-  ];
-  return edges.map(([a, b, c, d]) => ({ ...line(a, b, c, d, o.amp ?? 0.9, o.over ?? 5), w: o.w, o: o.op, speed: o.speed, nib: o.nib }));
+  const a = Math.min(rad, w / 2, h / 2);
+  const [l, t, rt, b] = [x, y, x + w, y + h];
+  return fromRight
+    ? `M${f(rt)},${f(y + h / 2)} L${f(rt)},${f(t + a)} Q${f(rt)},${f(t)} ${f(rt - a)},${f(t)} L${f(l + a)},${f(t)} Q${f(l)},${f(t)} ${f(l)},${f(t + a)} L${f(l)},${f(b - a)} Q${f(l)},${f(b)} ${f(l + a)},${f(b)} L${f(rt - a)},${f(b)} Q${f(rt)},${f(b)} ${f(rt)},${f(b - a)} Z`
+    : `M${f(l)},${f(y + h / 2)} L${f(l)},${f(t + a)} Q${f(l)},${f(t)} ${f(l + a)},${f(t)} L${f(rt - a)},${f(t)} Q${f(rt)},${f(t)} ${f(rt)},${f(t + a)} L${f(rt)},${f(b - a)} Q${f(rt)},${f(b)} ${f(rt - a)},${f(b)} L${f(l + a)},${f(b)} Q${f(l)},${f(b)} ${f(l)},${f(b - a)} Z`;
 }
 
-export function buildSketch(
-  svg: SVGSVGElement,
-  layout: { book: Rect; plank: Rect | null; shelfBooks: Rect[] },
-) {
+/** Half of the cover's outline: from the middle of the binding, round one corner pair, to `endY` on the fore-edge. */
+function half(B: Rect, up: boolean, endY: number, rl: number, rr: number) {
+  const { x, y, w, h } = B;
+  const edge = up ? y : y + h;
+  const s = up ? 1 : -1;
+  return `M${f(x)},${f(y + h / 2)} L${f(x)},${f(edge + s * rl)} Q${f(x)},${f(edge)} ${f(x + rl)},${f(edge)} L${f(x + w - rr)},${f(edge)} Q${f(x + w)},${f(edge)} ${f(x + w)},${f(edge + s * rr)} L${f(x + w)},${f(endY)}`;
+}
+
+/** A volume standing on the ledge: up the binding, over the top, down the fore-edge. */
+function standing(r: Rect) {
+  const { x, y, w, h } = r;
+  const a = Math.min(h * 0.03, w / 4);
+  return `M${f(x)},${f(y + h)} L${f(x)},${f(y + a)} Q${f(x)},${f(y)} ${f(x + a)},${f(y)} L${f(x + w - a)},${f(y)} Q${f(x + w)},${f(y)} ${f(x + w)},${f(y + a)} L${f(x + w)},${f(y + h)}`;
+}
+
+/** The same lettering as the real element, in ink, each letter waiting below its own baseline. */
+function letter(host: HTMLElement, el: HTMLElement): HTMLElement[] {
+  const r = el.getBoundingClientRect();
+  if (!r.width || !el.offsetWidth) return [];
+  const cs = getComputedStyle(el);
+  const k = r.width / el.offsetWidth; // the cover sits a little toward the camera, so it is drawn a touch larger
+  const px = (v: string) => `${((parseFloat(v) || 0) * k).toFixed(2)}px`;
+  const size = (parseFloat(cs.fontSize) || 12) * k;
+  const lines = r.height > size * 1.9;
+  const box = document.createElement("div");
+  box.className = "ink-label";
+  Object.assign(box.style, {
+    left: `${r.left}px`,
+    top: `${r.top}px`,
+    width: `${r.width}px`,
+    height: `${r.height}px`,
+    fontFamily: cs.fontFamily,
+    fontWeight: cs.fontWeight,
+    fontSize: `${size.toFixed(2)}px`,
+    letterSpacing: px(cs.letterSpacing),
+    paddingLeft: px(cs.paddingLeft),
+    textTransform: cs.textTransform,
+    lineHeight: lines ? px(cs.lineHeight) : `${r.height}px`,
+    whiteSpace: lines ? "normal" : "nowrap",
+    overflow: lines ? "visible" : "hidden",
+  });
+  const out: HTMLElement[] = [];
+  for (const ch of el.textContent ?? "") {
+    const s = document.createElement("span");
+    s.textContent = ch === " " ? " " : ch;
+    box.appendChild(s);
+    out.push(s);
+  }
+  host.appendChild(box);
+  return out;
+}
+
+export function buildSketch(svg: SVGSVGElement, host: HTMLElement, layout: SketchLayout) {
   svg.replaceChildren();
+  host.querySelectorAll(".ink-label").forEach((n) => n.remove());
   const g = document.createElementNS(NS, "g");
   g.setAttribute("fill", "none");
-  g.setAttribute("stroke", "#3a3028");
+  g.setAttribute("stroke", INK);
   g.setAttribute("stroke-linecap", "round");
   g.setAttribute("stroke-linejoin", "round");
   svg.appendChild(g);
 
-  const { book: B, plank: P, shelfBooks } = layout;
-  const seq: Stroke[][] = []; // each group runs in order; strokes inside a group overlap
+  const { book: B, plank: P, clasp: C, icon: S } = layout;
+  const cy = B.y + B.h / 2;
+  const fore = B.x + B.w;
+  const strokes: Stroke[] = [];
 
-  // 1 · the diary: outline, then a lighter second pass
-  const outline = box(B, { w: 1.5, op: 0.85, speed: 1000, nib: true, over: 7 });
-  const second = box({ x: B.x + 1.6, y: B.y + 1.4, w: B.w - 2.4, h: B.h - 2.6 }, { w: 0.9, op: 0.32, speed: 1300, nib: false, amp: 1.4, over: 4 });
-  seq.push(outline);
-  seq.push(second);
+  // 1 · the cover opens out from the middle of its binding; the oak band follows the same axis
+  const top = C.strap ? C.strap.y : cy;
+  const bottom = C.strap ? C.strap.y + C.strap.h : cy;
+  const { fore: rf, spine: rs } = layout.radius;
+  strokes.push({ d: half(B, true, top, rs, rf), at: 0, dur: 1.3, w: 1.5, ease: "power3.inOut" });
+  strokes.push({ d: half(B, false, bottom, rs, rf), at: 0, dur: 1.3, w: 1.5, ease: "power3.inOut" });
+  const bx = B.x + layout.band;
+  strokes.push({ d: `M${f(bx)},${f(cy)} L${f(bx)},${f(B.y + 1)}`, at: 0.14, dur: 0.8 });
+  strokes.push({ d: `M${f(bx)},${f(cy)} L${f(bx)},${f(B.y + B.h - 1)}`, at: 0.14, dur: 0.8 });
 
-  // 2 · details: the oak spine band, the line icon, a quiet label, the steel clasp
-  const spine = [{ ...line(B.x + B.w * 0.13, B.y + 2, B.x + B.w * 0.13, B.y + B.h - 2, 0.7, 2), w: 1.2, o: 0.65, speed: 900, nib: true }];
-  const cx = B.x + B.w * 0.565;
-  const iw = B.w * 0.3;
-  const ih = B.w * 0.38;
-  const iy = B.y + B.h * 0.4 - ih / 2;
-  const icon: Stroke[] = [
-    ...box({ x: cx - iw / 2, y: iy, w: iw, h: ih }, { w: 1.3, op: 0.7, speed: 700, nib: true, amp: 0.6, over: 2.5 }),
-    { ...line(cx - iw / 2 + iw * 0.2, iy + 2, cx - iw / 2 + iw * 0.2, iy + ih - 2, 0.4, 0), w: 1, o: 0.55, speed: 600, nib: true },
-    ...box({ x: cx - iw * 0.08, y: iy + ih * 0.2, w: iw * 0.4, h: ih * 0.32 }, { w: 1, op: 0.6, speed: 500, nib: true, amp: 0.4, over: 1.5 }),
-  ];
-  const title: Stroke[] = [
-    { ...scribble(cx - B.w * 0.1, B.y + B.h * 0.14, B.w * 0.2, 1.4), w: 1, o: 0.5, speed: 420, nib: true },
-    { ...scribble(cx - B.w * 0.19, B.y + B.h * 0.6, B.w * 0.38, 2.6), w: 1.5, o: 0.75, speed: 520, nib: true },
-    { ...scribble(cx - B.w * 0.14, B.y + B.h * 0.86, B.w * 0.28, 1.8), w: 1, o: 0.5, speed: 440, nib: true },
-  ];
-  const clasp = box(
-    { x: B.x + B.w * 0.78, y: B.y + B.h * 0.445, w: B.w * 0.25, h: B.h * 0.11 },
-    { w: 1.3, op: 0.8, speed: 700, nib: true, amp: 0.6, over: 2.5 },
-  );
-  seq.push(spine, icon, title, clasp);
-
-  // 3 · shading on the table side of the diary
-  const hatch: Stroke[] = [];
-  for (let i = 0; i < 11; i++) {
-    const hx = B.x + B.w + 6 + i * 3.6;
-    hatch.push({ ...line(hx + 10, B.y + B.h * 0.06 + i * 3, hx - 12, B.y + B.h * (0.62 + i * 0.03), 0.4, 0), w: 0.8, o: 0.3, speed: 1500, nib: i % 3 === 0, overlap: 0.82 });
+  // 2 · where the two halves arrive on the fore-edge, the line carries on as the strap and closes in the clasp
+  if (C.strap) {
+    const from = fore;
+    const toPlate = C.plate ? C.plate.x + C.plate.w : C.strap.x;
+    const toBarrel = C.barrel ? C.barrel.x : C.strap.x + C.strap.w;
+    for (const y of [top, bottom]) {
+      strokes.push({ d: `M${f(from)},${f(y)} L${f(toPlate)},${f(y)}`, at: 1.16, dur: 0.34, ease: "power2.out" });
+      strokes.push({ d: `M${f(from)},${f(y)} L${f(toBarrel)},${f(y)}`, at: 1.16, dur: 0.2, ease: "power2.out" });
+    }
   }
-  seq.push(hatch);
+  if (C.plate) strokes.push({ d: rrect(C.plate, Math.min(C.plate.w, C.plate.h) * 0.16, true), at: 1.38, dur: 0.6 });
+  if (C.barrel) strokes.push({ d: rrect(C.barrel, 2.5), at: 1.3, dur: 0.45 });
 
-  // 4 · the shelf and the three volumes waiting on it
+  // 3 · the tooling: the little book on the cover, in the order you would draw it
+  if (S) {
+    const u = S.w / 48;
+    const at = (ux: number, uy: number) => `${f(S.x + ux * u)},${f(S.y + uy * u)}`;
+    const w = Math.max(1.1, 1.15 * u);
+    strokes.push({ d: rrect({ x: S.x + 9 * u, y: S.y + 5 * u, w: 30 * u, h: 38 * u }, 2.5 * u), at: 0.62, dur: 0.8, w });
+    strokes.push({ d: `M${at(15, 5)} L${at(15, 43)}`, at: 0.92, dur: 0.5, w });
+    strokes.push({ d: rrect({ x: S.x + 20 * u, y: S.y + 13 * u, w: 13 * u, h: 14 * u }, 1.5 * u), at: 1.1, dur: 0.55, w });
+    strokes.push({ d: `M${at(20, 33)} L${at(33, 33)}`, at: 1.38, dur: 0.32, w, ease: "power2.out" });
+    strokes.push({ d: `M${at(20, 37)} L${at(28, 37)}`, at: 1.5, dur: 0.26, w, ease: "power2.out" });
+  }
+
+  // 4 · the ledge grows out from its middle, and the other volumes rise from it
+  const shelfAt = 1.42;
   if (P) {
-  const shelf: Stroke[] = [
-    { ...line(P.x - 6, P.y, P.x + P.w + 6, P.y, 0.8, 4), w: 1.5, o: 0.8, speed: 1100, nib: true },
-    { ...line(P.x - 2, P.y + P.h, P.x + P.w + 2, P.y + P.h, 0.8, 3), w: 1.2, o: 0.7, speed: 1100, nib: true },
-    { ...line(P.x - 6, P.y, P.x - 6, P.y + P.h, 0.3, 1), w: 1, o: 0.6, speed: 300, nib: true },
-    { ...line(P.x + P.w + 6, P.y, P.x + P.w + 6, P.y + P.h, 0.3, 1), w: 1, o: 0.6, speed: 300, nib: true },
-  ];
-  seq.push(shelf);
+    const mid = P.x + P.w / 2;
+    const [l, r, t, b] = [P.x, P.x + P.w, P.y, P.y + P.h];
+    strokes.push({ d: `M${f(mid)},${f(t)} L${f(r)},${f(t)} L${f(r)},${f(b)} L${f(mid)},${f(b)}`, at: shelfAt, dur: 0.85, ease: "power3.inOut" });
+    strokes.push({ d: `M${f(mid)},${f(t)} L${f(l)},${f(t)} L${f(l)},${f(b)} L${f(mid)},${f(b)}`, at: shelfAt, dur: 0.85, ease: "power3.inOut" });
   }
-  shelfBooks.forEach((r) => {
-    const bk = box(r, { w: 1.2, op: 0.75, speed: 600, nib: true, amp: 0.6, over: 2.5 });
-    bk.push({ ...line(r.x + r.w * 0.14, r.y + 2, r.x + r.w * 0.14, r.y + r.h - 2, 0.4, 0), w: 0.8, o: 0.5, speed: 500, nib: true });
-    seq.push(bk);
+  layout.shelfBooks.forEach((r, i) => {
+    const at = shelfAt + 0.5 + i * 0.12;
+    strokes.push({ d: standing(r), at, dur: 0.62 });
+    const sx = r.x + r.w * 0.16;
+    strokes.push({ d: `M${f(sx)},${f(r.y + r.h)} L${f(sx)},${f(r.y + 1)}`, at: at + 0.12, dur: 0.42, w: 1, ease: "power2.out" });
   });
-
-  // the nib
-  const nib = document.createElementNS(NS, "g");
-  nib.setAttribute("opacity", "0");
-  const tip = document.createElementNS(NS, "circle");
-  tip.setAttribute("r", "2.1");
-  tip.setAttribute("fill", "#2a2420");
-  const ring = document.createElementNS(NS, "circle");
-  ring.setAttribute("r", "7");
-  ring.setAttribute("fill", "rgba(58,48,40,.12)");
-  nib.append(ring, tip);
-  svg.appendChild(nib);
 
   const tl = gsap.timeline();
-  let cursor = 0;
-  seq.forEach((group) => {
-    const parallel = group === second || group === hatch;
-    let groupEnd = cursor;
-    let gc = cursor + (group === hatch ? 0.5 : 0);
-    group.forEach((s, i) => {
-      const path = document.createElementNS(NS, "path");
-      path.setAttribute("d", s.d);
-      path.setAttribute("pathLength", "1");
-      path.setAttribute("stroke-width", String(s.w));
-      path.setAttribute("stroke-opacity", String(s.o));
-      path.style.strokeDasharray = "1 1";
-      path.style.strokeDashoffset = "1";
-      path.style.visibility = "hidden";
-      g.appendChild(path);
-      const dur = Math.max(0.08, s.len / (s.speed * SP));
-      const prox = { p: 0 };
-      const total = path.getTotalLength();
-      // the second pass starts a beat after the first stroke, then follows its pace
-      const start = group === second ? cursor - 0.5 + i * dur * 0.6 : gc;
-      tl.fromTo(
-        prox,
-        { p: 0 },
-        {
-          p: 1,
-          duration: dur,
-          ease: "power1.inOut",
-          immediateRender: false,
-          onStart: () => {
-            path.style.visibility = "visible";
-            if (s.nib) gsap.set(nib, { opacity: 1 });
-          },
-          onUpdate: () => {
-            path.style.strokeDashoffset = String(1 - prox.p);
-            if (s.nib) {
-              const pt = path.getPointAtLength(total * prox.p);
-              nib.setAttribute("transform", `translate(${pt.x.toFixed(1)} ${pt.y.toFixed(1)})`);
-            }
-          },
-          onComplete: () => {
-            path.style.strokeDashoffset = "0";
-          },
+  let end = 0;
+  for (const s of strokes) {
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", s.d);
+    path.setAttribute("pathLength", "1");
+    path.setAttribute("stroke-width", String(s.w ?? 1.25));
+    path.setAttribute("stroke-opacity", String(s.o ?? 0.88));
+    // the dash starts a little way off the path, so its round cap never shows as a dot before the stroke begins
+    path.style.strokeDasharray = "1 1.5";
+    path.style.strokeDashoffset = "1.02";
+    path.style.visibility = "hidden";
+    g.appendChild(path);
+    tl.fromTo(
+      path,
+      { strokeDashoffset: 1.02 },
+      {
+        strokeDashoffset: 0,
+        duration: s.dur * PACE,
+        ease: s.ease ?? "power2.inOut",
+        immediateRender: false,
+        onStart: () => {
+          path.style.visibility = "visible";
         },
-        start,
-      );
-      groupEnd = Math.max(groupEnd, start + dur);
-      gc = start + dur * (s.overlap ?? 0.9) + (group === hatch ? 0.01 : 0.02);
-    });
-    // the second pass and the shading run alongside the details instead of after them
-    if (!parallel) cursor = groupEnd;
-  });
-  tl.set(nib, { opacity: 0 }, cursor + 0.05);
+      },
+      s.at * PACE,
+    );
+    end = Math.max(end, (s.at + s.dur) * PACE);
+  }
 
-  return { tl, group: g, nib, duration: cursor + 0.05 };
+  // 5 · the lettering is set, a letter at a time, each rising onto its line
+  layout.labels.forEach((el, i) => {
+    const letters = letter(host, el);
+    if (!letters.length) return;
+    const at = (1.3 + i * 0.3) * PACE;
+    const each = Math.min(0.03, 0.5 / letters.length);
+    tl.fromTo(
+      letters,
+      { yPercent: 115, opacity: 0 },
+      { yPercent: 0, opacity: 1, duration: 0.75, ease: "expo.out", stagger: each, immediateRender: true },
+      at,
+    );
+    end = Math.max(end, at + 0.75 * 0.6 + each * letters.length);
+  });
+
+  return { tl, duration: end };
 }

@@ -74,20 +74,21 @@ export function computeLayout(w: number, h: number, count: number, low = lowPowe
     top = 8;
     bottom = h - 8;
   } else if (kind === "phone") {
-    shelf.slotH = clamp(h * 0.068, 42, 62);
-    shelf.gap = clamp(w * 0.045, 12, 22);
+    shelf.slotH = clamp(h * 0.062, 40, 54);
+    shelf.gap = clamp(w * 0.036, 10, 16);
     shelf.top = 12;
-    top = shelf.top + shelf.slotH + 12 + 14;
-    bottom = h - 78; // bottom bar
-    left = 10;
-    right = w - 10;
+    top = shelf.top + shelf.slotH + 7 + 16;
+    bottom = h - 64; // pager
+    // room for the clasp, which reaches past the fore-edge
+    left = 15;
+    right = w - 15;
   } else {
     shelf.labels = h >= 640;
-    shelf.slotH = clamp(h * 0.082, 46, 92);
-    shelf.gap = clamp(shelf.slotH * 0.55, 22, 52);
-    shelf.top = clamp(h * 0.016, 8, 18);
-    top = shelf.top + shelf.slotH + 12 + (shelf.labels ? 30 : 10) + 8;
-    bottom = h - clamp(h * 0.03, 16, 34);
+    shelf.slotH = clamp(h * 0.088, 48, 100);
+    shelf.gap = clamp(shelf.slotH * 0.62, 26, 60);
+    shelf.top = clamp(h * 0.018, 10, 20);
+    top = shelf.top + shelf.slotH + 7 + (shelf.labels ? 34 : 12) + 6;
+    bottom = h - 60; // a clear band for the pager, so nothing ever sits on the book
     const side = kind === "tablet" ? 20 : clamp(w * 0.05, 40, 120);
     left = side;
     right = w - side;
@@ -110,8 +111,8 @@ export function computeLayout(w: number, h: number, count: number, low = lowPowe
     return { mode, bw, bh };
   });
 
-  const minEm = kind === "phone" ? 16.5 : kind === "phone-land" ? 14 : 15;
-  const strips = low ? 5 : 7;
+  const minEm = kind === "phone" ? 15.5 : kind === "phone-land" ? 13.5 : 14.5;
+  const strips = low ? 6 : 9;
 
   return {
     kind,

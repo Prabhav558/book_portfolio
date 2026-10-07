@@ -1,6 +1,5 @@
 import { gsap } from "./gsap";
 import { D, HANDOFF, type BookTL } from "./timeline";
-import { unEaseTurn } from "./curl";
 
 export type State = { book: number; label: string };
 
@@ -160,39 +159,34 @@ export function createDirector(initial: BookTL[], hooks: Hooks) {
       drive(0, books[0].labels.s0, rate);
     },
     /**
-     * Take hold of the page: the caller sets how far it is turned (0–1) and lets go.
+     * Take hold of the page that turns in this direction. While it is held nothing else moves;
+     * the caller shows the turn itself (lib/fold.ts) and then says how it ended.
      * Only page turns inside the open book can be held; returns null otherwise.
      */
-    scrub(dir: 1 | -1) {
+    hold(dir: 1 | -1) {
       const next = cur + dir;
       if (active.size || crossing || scrubbing || next < 0 || next >= states.length) return null;
       const a = states[cur];
       const b = states[next];
       if (a.book !== b.book || a.label === "end" || b.label === "end") return null;
-      const tl = books[a.book].tl;
-      const from = timeOf(a);
-      const to = timeOf(b);
-      const lo = Math.min(from, to);
-      const span = Math.abs(to - from);
       const origin = cur;
       let started = false;
       scrubbing = true;
       return {
-        set(q: number) {
-          if (!started) {
-            started = true;
-            hooks.onMove(origin, next, "drag");
-          }
-          const c = Math.min(0.985, Math.max(0, q));
-          tl.time(lo + span * unEaseTurn(dir > 0 ? c : 1 - c), false);
+        /** The page has actually started to move. */
+        begin() {
+          if (started) return;
+          started = true;
+          hooks.onMove(origin, next, "drag");
         },
-        /** Let go: finish the turn or fall back, at a pace that matches the flick. */
-        release(commit: boolean, rate = 1) {
+        /** Let go: the page went over (the book is now on the next state) or fell back. */
+        end(turned: boolean) {
           scrubbing = false;
-          if (!started) return;
-          if (commit) cur = next;
-          drive(a.book, commit ? to : from, rate);
-          if (active.size === 0) settle();
+          if (turned) {
+            cur = next;
+            books[a.book].tl.time(timeOf(b), false);
+          }
+          if (started) settle();
         },
       };
     },

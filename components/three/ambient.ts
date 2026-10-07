@@ -61,7 +61,7 @@ const bgFrag = /* glsl */ `
     vec2 f = vec2(uFocus.x * asp, uFocus.y);
 
     // a bright, slightly warm room
-    vec3 col = vec3(0.915, 0.911, 0.898);
+    vec3 col = vec3(0.906, 0.898, 0.878);
 
     // daylight pooled around the book, tinted by whichever volume is on the table
     float d = length((p - f) * vec2(0.75, 1.0));

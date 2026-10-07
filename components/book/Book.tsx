@@ -64,8 +64,9 @@ export function Book({
   const spread = box.mode === "spread";
   const { pages, zoom } = paged;
 
+  const running = `${def.volume} — ${def.label}`;
   const render = (p: PageSpec, i: number) => (
-    <PageShell volume={def.volume} section={p.section} folio={i + 1} full={p.full}>
+    <PageShell running={running} folio={i + 1} full={p.full} tone={p.tone} bleed={p.bleed}>
       {p.blocks.map((b) => (
         <div key={b.id} data-b={b.id} style={zoom[b.id] ? ({ zoom: zoom[b.id] } as CSSProperties) : undefined}>
           {b.node}
@@ -90,7 +91,8 @@ export function Book({
   }
 
   const n = leaves.length;
-  const zOf = (i: number) => 0.2 + (0.66 * (n - i)) / Math.max(n, 1);
+  // heights inside the block, as a fraction of its thickness (see the hinge note on .leaf)
+  const zOf = (i: number) => 0.12 + (0.38 * (n - i)) / Math.max(n, 1);
 
   return (
     <div
@@ -115,11 +117,11 @@ export function Book({
           <div className="edge edge-spine" />
           <div className="edge edge-fore" />
           <div className="edge edge-bottom" />
+          {spread && <div className="hinge" />}
 
           <div className="leaves">
             <div className="stack stack--r" />
-            {spread && <div className="stack stack--l" />}
-            <div className="leaf leaf--base" style={{ "--z": 0.1 } as CSSProperties}>
+            <div className="leaf leaf--base" style={{ "--z": 0.06 } as CSSProperties}>
               <div className="leaf-inner">
                 <Face side="R" step={baseStep}>
                   {render(pages[basePage], basePage)}
@@ -159,6 +161,7 @@ export function Book({
               </div>
               {spread && (
                 <div className="face face--back cover-back" data-step={0}>
+                  <div className="stack stack--l" />
                   <div className="paper" data-side="L">
                     <div className="page-content">{render(pages[0], 0)}</div>
                     <div className="cast" />

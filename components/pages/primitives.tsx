@@ -1,50 +1,98 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 
-/** Lets page content (CTAs, "back to start") drive the scroll experience. */
+/** Lets page content (links, "back to start") drive the book. */
 export const NavContext = createContext<{ goToBook: (i: number) => void; goToStart: () => void }>({
   goToBook: () => {},
   goToStart: () => {},
 });
 export const useNav = () => useContext(NavContext);
 
-/** Section heading. In the flow it keeps a little air above it unless it opens the page. */
-export function Heading({ kicker, title, lede }: { kicker: string; title: ReactNode; lede?: string }) {
+export function Arrow({ className = "" }: { className?: string }) {
   return (
-    <div className="pg-head">
-      <div className="pg-kicker">{kicker}</div>
-      <h2 className="pg-title mt-[0.3em]">{title}</h2>
-      {lede && <p className="pg-body mt-[0.6em] max-w-[26em]">{lede}</p>}
+    <svg viewBox="0 0 16 16" className={className} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M2 8h11M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ArrowUpRight({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M4.5 11.5l7-7M6 4.5h5.5V10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** An underlined text link with an arrow — the only kind of link on a page. */
+export function TextLink({
+  children,
+  href,
+  onClick,
+  external,
+  download,
+  className = "",
+}: {
+  children: ReactNode;
+  href?: string;
+  onClick?: () => void;
+  external?: boolean;
+  download?: boolean;
+  className?: string;
+}) {
+  const cls = `link ${external ? "link--up" : ""} ${className}`;
+  const icon = external ? <ArrowUpRight /> : <Arrow />;
+  if (href) {
+    return (
+      <a href={href} className={cls} download={download} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+        {children}
+        {icon}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className={cls} onClick={onClick}>
+      {children}
+      {icon}
+    </button>
+  );
+}
+
+/** Display type that must fit one line: shrinks with the length of the text. */
+export const fit = (text: string, max: number, widthCqw = 78, glyph = 0.47): CSSProperties =>
+  ({ "--fit": `${Math.min(max, widthCqw / (Math.max(text.length, 1) * glyph)).toFixed(2)}cqw` }) as CSSProperties;
+
+/** Chapter opener, printed on a full page of the volume's colour. */
+export function Opener({ num, chapter, title, blurb }: { num: string; chapter: string; title: string; blurb: string }) {
+  return (
+    <div className="flex h-full flex-col justify-between">
+      <div className="t-meta flex justify-between">
+        <span>Chapter</span>
+        <span>{chapter}</span>
+      </div>
+      <div>
+        <div className="t-num">{num}</div>
+        <h2 className="t-h1 mt-[6cqw]">{title}</h2>
+        <p className="t-body mt-[3.5cqw] max-w-[19em]">{blurb}</p>
+      </div>
     </div>
   );
 }
 
-/** Closing page of a volume. */
-export function EndCard({
-  kicker,
-  line,
-  accent,
-  note,
-  action,
-}: {
-  kicker: string;
-  line: string;
-  accent: string;
-  note?: string;
-  action?: ReactNode;
-}) {
+/** Last page of a volume: one large link to whatever comes next. */
+export function NextPage({ meta, title, sub, onClick }: { meta: string; title: string; sub: string; onClick: () => void }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <Fleuron className="w-[8em] text-[var(--accent)] opacity-70" />
-      <div className="pg-kicker mt-[1.4em]">{kicker}</div>
-      <p className="pg-title mt-[0.5em] text-[2.3em]">
-        {line}
-        <br />
-        <span className="text-[var(--accent)] italic">{accent}</span>
-      </p>
-      {note && <p className="pg-body mt-[0.9em] max-w-[18em]">{note}</p>}
-      {action && <div className="mt-[1.4em]">{action}</div>}
+    <div className="flex h-full flex-col justify-between">
+      <div className="t-meta">{meta}</div>
+      <button type="button" onClick={onClick} className="next text-left">
+        <div className="t-meta">Next</div>
+        <div className="t-h1 mt-[3cqw] flex items-center gap-[4cqw]">
+          <em>{title}</em>
+          <Arrow className="next-arrow h-[0.5em] w-[0.5em] shrink-0" />
+        </div>
+        <div className="t-body mt-[3.5cqw]">{sub}</div>
+      </button>
     </div>
   );
 }
@@ -52,47 +100,21 @@ export function EndCard({
 /** A quiet typographic page, used when a two-page book needs one more page. */
 export function QuotePage({ quote, by }: { quote: string; by: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-[0.5em] text-center">
-      <span className="font-serif text-[4em] leading-[0.6] text-[var(--accent)] opacity-40">“</span>
-      <p className="pg-title mt-[0.2em] text-[1.7em] leading-[1.2] italic">{quote}</p>
-      <div className="mt-[1.2em] h-px w-[3em] bg-[var(--accent)] opacity-50" />
-      <p className="pg-small mt-[0.9em] tracking-[0.18em] uppercase">{by}</p>
+    <div className="flex h-full flex-col justify-between">
+      <div className="t-meta">Note</div>
+      <div>
+        <p className="t-statement">
+          <em>{quote}</em>
+        </p>
+        <p className="t-meta mt-[5cqw]">— {by}</p>
+      </div>
     </div>
   );
 }
 
-export function Fleuron({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 16" className={className} aria-hidden fill="none" stroke="currentColor" strokeWidth="1">
-      <path d="M2 8h44" />
-      <path d="M74 8h44" />
-      <path d="M60 2c-4 0-7 3-7 6s3 6 7 6 7-3 7-6-3-6-7-6Z" />
-      <path d="M53 8c-2-2-4-2-6 0 2 2 4 2 6 0Z M67 8c2-2 4-2 6 0-2 2-4 2-6 0Z" fill="currentColor" />
-      <circle cx="60" cy="8" r="1.6" fill="currentColor" />
-    </svg>
-  );
-}
-
-export function Arrow({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} width="1em" height="1em" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-export function ArrowUpRight({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} width="1em" height="1em" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M5 11l6-6M6 5h5v5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-
 export type IconKind = "book" | "grid" | "timeline" | "mail";
 
-/** Single-line cover icons, drawn to be debossed into the cloth. */
+/** Single-line cover icons, pressed into the cloth. */
 export function CoverIcon({ kind, className = "" }: { kind: IconKind; className?: string }) {
   const shape =
     kind === "book" ? (
@@ -125,38 +147,34 @@ export function CoverIcon({ kind, className = "" }: { kind: IconKind; className?
     );
   // the pressed-in look comes from a dark and a light copy offset by a hair (no filters: they are slow to redraw)
   return (
-    <svg viewBox="0 0 48 48" className={className} fill="none" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <g stroke="rgba(0,0,0,0.26)" transform="translate(0 -0.35)">
+    <svg viewBox="0 0 48 48" className={className} fill="none" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <g stroke="rgba(0,0,0,0.24)" transform="translate(0 -0.3)">
         {shape}
       </g>
-      <g stroke="rgba(255,255,255,0.3)" transform="translate(0 0.35)">
+      <g stroke="rgba(255,255,255,0.28)" transform="translate(0 0.3)">
         {shape}
       </g>
-      <g stroke="rgba(255,255,255,0.86)">{shape}</g>
+      <g stroke="rgba(255,255,255,0.88)">{shape}</g>
     </svg>
   );
 }
 
-/** Minimal cover typography shared by all four volumes: a debossed line icon and a quiet label. */
-export function CoverTitle({
-  volume,
-  title,
-  subtitle,
-  icon,
-}: {
-  volume: string;
-  title: ReactNode;
-  subtitle: string;
-  icon: IconKind;
-}) {
+/** The cover: one debossed icon, the title, and the volume mark. Nothing else. */
+export function CoverTitle({ volume, title, icon }: { volume: string; title: string; icon: IconKind }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-between px-[8cqw] pt-[13cqh] pb-[11cqh] text-center">
-      <div className="foil font-sans text-[3.1cqw] font-medium tracking-[0.5em] uppercase">{volume}</div>
-      <div className="flex flex-col items-center gap-[8cqw]">
-        <CoverIcon kind={icon} className="w-[36cqw]" />
-        <div className="foil font-sans text-[5.4cqw] leading-tight font-semibold tracking-[0.3em] uppercase">{title}</div>
+    <div className="deboss flex h-full w-full flex-col items-center justify-between pt-[31cqh] pb-[6.5cqh] text-center font-sans">
+      <div className="flex flex-col items-center gap-[7.5cqw]">
+        {/* the data-cover-* marks tell the opening sketch where to draw (lib/sketch.ts) */}
+        <div data-cover-icon>
+          <CoverIcon kind={icon} className="w-[29cqw]" />
+        </div>
+        <div data-cover-title className="pl-[0.32em] text-[4.3cqw] leading-tight font-semibold tracking-[0.32em] uppercase">
+          {title}
+        </div>
       </div>
-      <div className="foil font-sans text-[2.9cqw] tracking-[0.28em] uppercase opacity-80">{subtitle}</div>
+      <div data-cover-mark className="pl-[0.34em] text-[2.6cqw] font-medium tracking-[0.34em] uppercase opacity-80">
+        {volume}
+      </div>
     </div>
   );
 }

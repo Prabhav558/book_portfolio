@@ -118,7 +118,7 @@ async function shots(only) {
     await sleep(4600);
     await shot("7-book4");
     const pages = await page.evaluate(() =>
-      [...document.querySelectorAll(".book-anchor")].map((a) => `${a.dataset.mode}:${a.querySelectorAll(".face[data-step] .pg-folio").length}`).join("  "),
+      [...document.querySelectorAll(".book-anchor")].map((a) => `${a.dataset.mode}:${a.querySelectorAll(".face[data-step] .pg-foot").length}`).join("  "),
     );
     console.log(name.padEnd(18), pages);
     await page.close();

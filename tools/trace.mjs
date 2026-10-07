@@ -1,5 +1,5 @@
 /**
- * Where does main-thread time go?  node tools/trace.mjs [intro|handoff] [device]
+ * Where does main-thread time go?  node tools/trace.mjs [intro|handoff|open] [device] [cpu throttle]
  * Prints the heaviest event types and every task over 30ms inside the window.
  */
 import puppeteer from "puppeteer-core";
@@ -10,7 +10,7 @@ import { DEVICES } from "./check.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const [, , what = "intro", device = "desktop"] = process.argv;
+const [, , what = "intro", device = "desktop", throttle = "1"] = process.argv;
 const vp = DEVICES[device];
 const file = path.join(here, "out", "trace.json");
 fs.mkdirSync(path.join(here, "out"), { recursive: true });
@@ -18,14 +18,23 @@ fs.mkdirSync(path.join(here, "out"), { recursive: true });
 const browser = await puppeteer.launch({ executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", headless: "new", args: ["--enable-gpu", "--ignore-gpu-blocklist"] });
 const page = await browser.newPage();
 await page.setViewport(vp);
+if (Number(throttle) > 1) await (await page.target().createCDPSession()).send("Emulation.setCPUThrottlingRate", { rate: Number(throttle) });
 await page.goto(process.env.SITE ?? "http://localhost:3123/", { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".book-anchor");
 const cats = ["devtools.timeline", "disabled-by-default-devtools.timeline", "disabled-by-default-devtools.timeline.stack"];
+// INVAL=1 also records which nodes each style recalculation was scheduled for (see the trace file)
+if (process.env.INVAL) cats.push("disabled-by-default-devtools.timeline.invalidationTracking");
 const hintUp = () => page.waitForFunction(() => parseFloat(getComputedStyle(document.querySelector("[data-intro-hint]")).opacity) > 0.95, { timeout: 120000 });
 if (what === "intro") {
   await page.waitForFunction(() => document.querySelectorAll(".sketch path").length > 0, { timeout: 60000 });
   await page.tracing.start({ path: file, categories: cats });
   await hintUp();
+} else if (what === "open") {
+  await hintUp();
+  await sleep(600);
+  await page.tracing.start({ path: file, categories: cats });
+  await page.click(".clasp");
+  await sleep(4200);
 } else {
   await hintUp();
   await page.click(".clasp");

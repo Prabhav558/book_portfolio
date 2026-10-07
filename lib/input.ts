@@ -2,10 +2,11 @@
  * Turns wheel, pointer and keyboard input into page turns.
  *
  *  - wheel / vertical swipe / keys → one authored turn per intent (trackpad inertia never double-fires)
- *  - horizontal drag on the open book → the page follows the pointer and is released with its velocity
+ *  - a drag on the open book → the page is picked up where it was touched, follows the pointer,
+ *    and is let go with the pointer's velocity
  */
 
-export type Grab = { set: (q: number) => void; release: (commit: boolean, rate?: number) => void };
+export type Grab = { move: (x: number, y: number) => void; release: (vx: number, cancelled: boolean) => void };
 export type Hit = { side: "L" | "R" | "any"; pageW: number } | null;
 
 export function bindInput(o: {
@@ -15,8 +16,8 @@ export function bindInput(o: {
   enabled: () => boolean;
   /** Which half of the open book is under this point (null = not on the book). */
   hit: (x: number, y: number) => Hit;
-  /** Take hold of the page that turns in this direction. */
-  grab: (dir: 1 | -1) => Grab | null;
+  /** Take hold of the page that turns in this direction, at this point. */
+  grab: (dir: 1 | -1, x: number, y: number) => Grab | null;
 }) {
   // ───────── wheel ─────────
   let lastWheel = 0;
@@ -45,7 +46,6 @@ export function bindInput(o: {
   let hit: Hit = null;
   let dir: 1 | -1 = 1;
   let grab: Grab | null = null;
-  let q = 0;
   let touch = false;
   let swallowClick = false;
   const trail: { x: number; t: number }[] = [];
@@ -71,22 +71,22 @@ export function bindInput(o: {
     const dx = e.clientX - x0;
     const dy = e.clientY - y0;
     if (phase === "pending") {
-      if (Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) * 1.15 && hit) {
+      // a corner can be peeled on the diagonal, so the pull only has to lean sideways (a little less so under a finger,
+      // where straight up and down is a swipe)
+      if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy) * (touch ? 0.7 : 0.45) && hit) {
         dir = dx < 0 ? 1 : -1;
         // a page is picked up from the side it lies on
         const ok = hit.side === "any" || (dir > 0 ? hit.side === "R" : hit.side === "L");
-        grab = ok ? o.grab(dir) : null;
+        grab = ok ? o.grab(dir, x0, y0) : null;
         phase = grab ? "drag" : "dead";
         if (grab) window.getSelection()?.removeAllRanges();
-      } else if (touch && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+      } else if (touch && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.4) {
         phase = "swipe";
       }
     }
-    if (phase === "drag" && grab && hit) {
+    if (phase === "drag" && grab) {
       e.preventDefault();
-      const travel = hit.pageW * 1.45;
-      q = Math.min(1, Math.max(0, (-dir * dx - 7) / travel));
-      grab.set(q);
+      grab.move(e.clientX, e.clientY);
       const now = performance.now();
       trail.push({ x: e.clientX, t: now });
       while (trail.length > 2 && now - trail[0].t > 90) trail.shift();
@@ -98,10 +98,9 @@ export function bindInput(o: {
     if (phase === "drag" && grab) {
       const a = trail[0];
       const b = trail[trail.length - 1];
-      // px/ms in the turning direction (positive = with the turn)
-      const v = a && b && b.t > a.t ? (-dir * (b.x - a.x)) / (b.t - a.t) : 0;
-      const commit = !cancelled && (v > 0.35 || (q > 0.5 && v > -0.25));
-      grab.release(commit, Math.min(2.6, 1 + Math.abs(v) * 1.1));
+      // px/ms over the last moments of the drag — but a pointer that had come to rest has no speed left
+      const still = !b || performance.now() - b.t > 70;
+      grab.release(!still && a && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0, cancelled);
       swallowClick = true;
       window.setTimeout(() => (swallowClick = false), 0);
     } else if (phase === "swipe" && !cancelled) {

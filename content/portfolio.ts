@@ -58,8 +58,10 @@ export type Project = {
   tags: string[];
   live?: string;
   code?: string;
-  /** Hue (0–360) used to tint the generated cover plate. */
+  /** Hue (0–360) used to tint the plate shown until there is a real image. */
   hue: number;
+  /** Optional screenshot for featured projects, e.g. "/work/ledgerline.jpg" (put the file in /public). */
+  image?: string;
 };
 
 export const featuredProjects: Project[] = [

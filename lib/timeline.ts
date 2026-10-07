@@ -12,7 +12,7 @@ import { applyCurl, castLanding, castUnder, collectBend, createFill, type RigJob
  * invisibly and replay it from any entry point (see lib/director.ts).
  * Durations are real seconds.
  */
-export const D = { pull: 0.95, open: 1.4, flip: 1.25, close: 0.95, ret: 1, outro: 0.9 };
+export const D = { pull: 0.95, open: 1.25, flip: 1.05, close: 0.9, ret: 1, outro: 0.9 };
 export const CAMERA_ZOOM = 1.03;
 export const SHELF_TILT = 14;
 /** Fraction of a book's return after which the next book starts leaving the shelf. */
@@ -50,6 +50,8 @@ export function bookEls(anchor: HTMLElement) {
     base: q(".leaf--base .face")!,
     stackR: q(".stack--r"),
     stackL: q(".stack--l"),
+    hinge: q(".hinge"),
+    spine: q(".edge-spine"),
     pageLeaves,
     fronts: pageLeaves.map((l) => l.querySelector<HTMLElement>(".face--front")!),
     backs: pageLeaves.map((l) => l.querySelector<HTMLElement>(".face--back")),
@@ -82,6 +84,9 @@ export function fillJob(e: BookEls, i: number, force = false): RigJob {
   return e.fills[i]!;
 }
 
+/** How far the rest of the page block shows beyond the top sheet, in px (most of the board overhang). */
+const peekOf = (e: BookEls) => e.anchor.offsetHeight * 0.013 * 0.82;
+
 /** Everything a book looks like before its timeline has touched it. */
 export function resetBook(e: BookEls) {
   gsap.set(e.anchor, { xPercent: -50, yPercent: -50, zIndex: 1, rotation: 0, visibility: "visible" });
@@ -89,12 +94,14 @@ export function resetBook(e: BookEls) {
   gsap.set(e.book, { xPercent: 0 });
   gsap.set([e.cover, ...e.pageLeaves], { rotationY: 0, opacity: 1 });
   e.pageLeaves.forEach((l) => (l.style.visibility = ""));
-  gsap.set(e.leaves, { visibility: "hidden" });
+  showLeaves(e, false);
   gsap.set(e.anchor.querySelectorAll(".shade, .cast"), { opacity: 0 });
   gsap.set(e.shadow, { opacity: 0, scaleX: 1 });
   gsap.set(e.sheen, { xPercent: -18 });
-  if (e.stackR) gsap.set(e.stackR, { scaleX: 1 });
-  if (e.stackL) gsap.set(e.stackL, { scaleX: 0.12 });
+  if (e.stackR) gsap.set(e.stackR, { x: peekOf(e) });
+  if (e.stackL) gsap.set(e.stackL, { x: -0.12 * peekOf(e) });
+  if (e.hinge) gsap.set(e.hinge, { autoAlpha: 0 });
+  if (e.spine) gsap.set(e.spine, { autoAlpha: 1 });
   e.rigs.forEach((r) => r.classList.remove("on", "armed"));
 }
 
@@ -108,9 +115,18 @@ function ft(tl: gsap.core.Timeline, target: gsap.TweenTarget | null, from: gsap.
   tl.fromTo(target, from, { ...to, immediateRender: false }, at);
 }
 
-/** Deterministic, reversible visibility switch. */
-function flipVis(tl: gsap.core.Timeline, target: gsap.TweenTarget, from: string, to: string, at: number) {
-  ft(tl, target, { visibility: from }, { visibility: to, duration: 0.001 }, at);
+/**
+ * The inside of a closed book is switched off. Visibility hides the pages themselves; opacity
+ * also takes any armed sheets with them (those keep their own visibility — see .rig.armed).
+ */
+const SHOWN = { visibility: "inherit", opacity: 1 };
+const HIDDEN = { visibility: "hidden", opacity: 0 };
+export function showLeaves(e: BookEls, on: boolean) {
+  gsap.set(e.leaves, on ? SHOWN : HIDDEN);
+}
+/** The same switch on the timeline: deterministic and reversible. */
+function flipLeaves(tl: gsap.core.Timeline, e: BookEls, on: boolean, at: number) {
+  ft(tl, e.leaves, on ? HIDDEN : SHOWN, { ...(on ? SHOWN : HIDDEN), duration: 0.001 }, at);
 }
 
 /** Overlay that darkens then clears — a cast shadow sweeping over a page. */
@@ -169,7 +185,7 @@ export function buildBook(
 
   // ───────── open: the board has weight — it swings over, lands, and settles ─────────
   const first = e.fronts[0] ?? e.base;
-  flipVis(tl, e.leaves, "hidden", "inherit", t);
+  flipLeaves(tl, e, true, t);
   const O = D.open;
   if (!single) {
     const swing = O * 0.8;
@@ -180,6 +196,9 @@ export function buildBook(
     ft(tl, e.anchor, { scale: 1 }, { scale: CAMERA_ZOOM, duration: O, ease: "power2.inOut" }, t);
     ft(tl, e.shadow, { scaleX: 1 }, { scaleX: 2, duration: O * 0.9, ease: "power3.inOut" }, t);
     ft(tl, part(e.coverBack, ".shade"), { opacity: 0.6 }, { opacity: 0, duration: swing * 0.5, ease: "power1.out" }, t + swing * 0.5);
+    // lying open, the spine is flat under the pages: its upright face goes, the strip that joins the boards comes
+    ft(tl, e.hinge, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.12 }, t + swing * 0.92);
+    ft(tl, e.spine, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.12 }, t + swing * 0.92);
   } else {
     ft(tl, e.cover, { rotationY: 0 }, { rotationY: -105, duration: O * 0.9, ease: "power2.in" }, t);
     ft(tl, e.cover, { opacity: 1 }, { opacity: 0, duration: O * 0.3, ease: "power1.in" }, t + O * 0.6);
@@ -191,6 +210,7 @@ export function buildBook(
   labels.s0 = t;
 
   // ───────── page turns ─────────
+  const peek = peekOf(e);
   const stackR = (j: number) => 1 - (0.88 * j) / Math.max(n, 1);
   const stackL = (j: number) => 0.12 + (0.88 * j) / Math.max(n, 1);
   e.pageLeaves.forEach((leaf, i) => {
@@ -248,8 +268,8 @@ export function buildBook(
 
     tl.fromTo(prox, { p: 0 }, { p: 1, duration: D.flip, ease: "power2.inOut", immediateRender: false, onUpdate: update }, t);
     // the two halves of the page block trade thickness as you read
-    ft(tl, e.stackR, { scaleX: stackR(i) }, { scaleX: stackR(i + 1), duration: D.flip * 0.5, ease: "power1.inOut" }, t + D.flip * 0.1);
-    ft(tl, e.stackL, { scaleX: stackL(i) }, { scaleX: stackL(i + 1), duration: D.flip * 0.4, ease: "power1.inOut" }, t + D.flip * 0.6);
+    ft(tl, e.stackR, { x: peek * stackR(i) }, { x: peek * stackR(i + 1), duration: D.flip * 0.5, ease: "power1.inOut" }, t + D.flip * 0.1);
+    ft(tl, e.stackL, { x: -peek * stackL(i) }, { x: -peek * stackL(i + 1), duration: D.flip * 0.4, ease: "power1.inOut" }, t + D.flip * 0.6);
     markers.push({ time: t + D.flip * 0.1, fwd: "flip", back: "flip" });
     t += D.flip;
     labels[`s${i + 1}`] = t;
@@ -265,6 +285,8 @@ export function buildBook(
       const d = Math.min(j * 0.025, 0.2);
       ft(tl, el, { rotationY: -180 }, { rotationY: 0, duration: C - d, ease: "power2.inOut" }, t + d);
     });
+    ft(tl, e.hinge, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.1 }, t + 0.04);
+    ft(tl, e.spine, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.1 }, t + 0.04);
     ft(tl, e.book, { xPercent: 50 }, { xPercent: 0, duration: C, ease: "power2.inOut" }, t);
     ft(tl, e.anchor, { scale: CAMERA_ZOOM }, { scale: 1, duration: C, ease: "power2.inOut" }, t);
     ft(tl, e.shadow, { scaleX: 2 }, { scaleX: 1, duration: C, ease: "power2.inOut" }, t);
@@ -273,7 +295,7 @@ export function buildBook(
     ft(tl, e.cover, { opacity: 0 }, { opacity: 1, duration: C * 0.3, ease: "power1.out" }, t);
   }
   ft(tl, e.sheen, { xPercent: 26 }, { xPercent: -18, duration: C, ease: "power1.inOut" }, t);
-  flipVis(tl, e.leaves, "inherit", "hidden", t + C);
+  flipLeaves(tl, e, false, t + C);
   markers.push({ time: t + C * 0.92, fwd: "close", back: "open" });
   t += C;
 

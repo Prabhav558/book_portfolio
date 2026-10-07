@@ -1,48 +1,60 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { pageBox, type Layout } from "@/lib/layout";
 import type { Block, BookDef, PageSpec } from "./types";
 
 export type Paged = { pages: PageSpec[]; zoom: Record<string, number> };
 
-/** The frame every page shares: running header, the block flow, and the folio. */
+/** The frame every page shares: the content area and one quiet line at the foot. */
 export function PageShell({
-  volume,
-  section,
+  running,
   folio,
   full,
+  tone,
+  bleed,
   children,
 }: {
-  volume: string;
-  section: string;
+  running: string;
   folio?: number;
   full?: boolean;
-  children: React.ReactNode;
+  tone?: boolean;
+  bleed?: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div className="pc">
-      <div className="pg-runner">
-        <span>{volume}</span>
-        <span>{section}</span>
-      </div>
+    <div className={`pc ${tone ? "pc--tone" : ""} ${bleed ? "pc--bleed" : ""}`}>
       <div className={`pg-flow ${full ? "pg-flow--full" : ""}`}>{children}</div>
-      {folio !== undefined && <div className="pg-folio">{folio}</div>}
+      <div className="pg-foot">
+        <span>{folio !== undefined ? String(folio).padStart(2, "0") : ""}</span>
+        <span>{running}</span>
+      </div>
     </div>
   );
 }
 
-/** Greedy packing with "keep with next" for headings and forced breaks. */
+const spec = (blocks: Block[]): PageSpec => ({
+  blocks,
+  full: !!blocks[0]?.full,
+  tone: !!blocks[0]?.tone,
+  bleed: !!blocks[0]?.bleed,
+});
+
+/**
+ * Turns a book's blocks into pages. Composed (`full`) blocks are one page each;
+ * flowing blocks are packed greedily, with "keep with next" for headings.
+ * In a two-page book, spreads stay aligned and the page count stays even.
+ */
 export function paginate(def: BookDef, heights: Record<string, number>, H: number, gap: number, even: boolean): PageSpec[] {
   const pages: PageSpec[] = [];
   let cur: Block[] = [];
   let used = 0;
-  let section = "";
+  let fillers = 0;
 
+  const filler = (): PageSpec => spec([{ id: `${def.id}-filler-${fillers++}`, node: def.filler, full: true }]);
   const flush = () => {
     if (!cur.length) return;
-    pages.push({ blocks: cur, section: cur.find((b) => b.section)?.section ?? section, full: false });
-    section = [...cur].reverse().find((b) => b.section)?.section ?? section;
+    pages.push(spec(cur));
     cur = [];
     used = 0;
   };
@@ -50,14 +62,14 @@ export function paginate(def: BookDef, heights: Record<string, number>, H: numbe
   for (const b of def.blocks) {
     if (b.full) {
       flush();
-      if (b.section) section = b.section;
-      pages.push({ blocks: [b], section: b.section ?? section, full: true });
+      // a spread must open on a left-hand page (page 0 is a left-hand page)
+      if (even && b.left && pages.length % 2 === 1) pages.push(filler());
+      pages.push(spec([b]));
       continue;
     }
     const bh = heights[b.id] ?? 0;
     if (b.breakBefore) flush();
     if (cur.length && used + gap + bh > H + 0.5) {
-      // a heading must not be stranded at the foot of a page
       const carry: Block[] = [];
       while (cur.length > 1 && cur[cur.length - 1].keep) carry.unshift(cur.pop()!);
       flush();
@@ -69,17 +81,15 @@ export function paginate(def: BookDef, heights: Record<string, number>, H: numbe
   }
   flush();
 
-  // a two-page book needs an even page count: slip a quiet page in before the closing one
-  if (even && pages.length % 2 === 1) {
-    const filler: PageSpec = { blocks: [{ id: `${def.id}-filler`, node: def.filler, full: true }], section: "", full: true };
-    pages.splice(Math.max(1, pages.length - 1), 0, filler);
-  }
+  // even page count: slip a quiet page in before the closing one
+  if (even && pages.length % 2 === 1) pages.splice(Math.max(1, pages.length - 1), 0, filler());
   return pages;
 }
 
 /**
- * Renders every block once, invisibly, at the exact size a page will have, then
- * reports how the blocks pack into pages. Re-runs whenever the layout changes.
+ * Renders every block once, invisibly, at the exact size a page will have, then reports
+ * how the book paginates and which pages need to be scaled down a touch to fit.
+ * Re-runs whenever the layout changes.
  */
 export function Measure({ defs, layout, onDone }: { defs: BookDef[]; layout: Layout; onDone: (paged: Paged[], layout: Layout) => void }) {
   const root = useRef<HTMLDivElement>(null);
@@ -108,7 +118,7 @@ export function Measure({ defs, layout, onDone }: { defs: BookDef[]; layout: Lay
         host.querySelectorAll<HTMLElement>(":scope > .m-full").forEach((shell) => {
           const f = shell.querySelector<HTMLElement>(".pg-flow")!;
           const need = (f.firstElementChild as HTMLElement | null)?.scrollHeight ?? 0;
-          if (need > f.clientHeight + 1) zoom[shell.dataset.full!] = f.clientHeight / need;
+          if (need > f.clientHeight + 1) zoom[shell.dataset.full!] = Math.max(0.6, f.clientHeight / need);
         });
         return { pages: paginate(def, heights, H, gap, layout.books[k].mode === "spread"), zoom };
       });
@@ -127,10 +137,10 @@ export function Measure({ defs, layout, onDone }: { defs: BookDef[]; layout: Lay
         const p = pageBox(layout.books[k]);
         const shell: CSSProperties = { position: "absolute", left: 0, top: 0, width: p.w, height: p.h };
         return (
-          <div key={def.id} data-measure={k} style={{ "--accent": def.accent } as CSSProperties}>
+          <div key={def.id} data-measure={k} style={{ "--accent": def.accent, "--leather": def.leather } as CSSProperties}>
             <div className="paper m-normal" data-side="R" style={shell}>
               <div className="page-content">
-                <PageShell volume={def.volume} section="" folio={0}>
+                <PageShell running="" folio={0}>
                   {def.blocks
                     .filter((b) => !b.full)
                     .map((b) => (
@@ -141,12 +151,12 @@ export function Measure({ defs, layout, onDone }: { defs: BookDef[]; layout: Lay
                 </PageShell>
               </div>
             </div>
-            {def.blocks
-              .filter((b) => b.full)
+            {[...def.blocks, { id: `${def.id}-filler-0`, node: def.filler, full: true } as Block]
+              .filter((b) => b.full && !b.bleed)
               .map((b) => (
                 <div key={b.id} className="paper m-full" data-full={b.id} data-side="R" style={shell}>
                   <div className="page-content">
-                    <PageShell volume={def.volume} section="" folio={0} full>
+                    <PageShell running="" folio={0} full tone={b.tone}>
                       <div>{b.node}</div>
                     </PageShell>
                   </div>
