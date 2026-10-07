@@ -1,31 +1,18 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { BookDef, Mode } from "./types";
-
-export const STRIPS = 7;
+import type { BookBox } from "@/lib/layout";
+import type { BookDef, PageSpec } from "./types";
+import { PageShell, type Paged } from "./Paginator";
 
 type Side = "L" | "R";
 
 /** One printed side of a sheet: paper, gutter shading and the lighting overlays the flip animates. */
-function Face({
-  side,
-  back,
-  step,
-  className = "",
-  children,
-}: {
-  side: Side;
-  back?: boolean;
-  step: number;
-  className?: string;
-  children: ReactNode;
-}) {
+function Face({ side, back, step, children }: { side: Side; back?: boolean; step: number; children: ReactNode }) {
   return (
-    <div className={`face ${back ? "face--back" : "face--front"} ${className}`} data-step={step}>
+    <div className={`face ${back ? "face--back" : "face--front"}`} data-step={step}>
       <div className="paper" data-side={side}>
         <div className="page-content">{children}</div>
         <div className="cast" />
         <div className="shade" />
-        <div className="leaf-gloss" />
       </div>
     </div>
   );
@@ -33,67 +20,93 @@ function Face({
 
 /**
  * The turning sheet. A chain of hinged strips: strip k+1 is a child of strip k, so rotating each
- * hinge a little bends the sheet like paper. Its pages are copied in just before a turn (lib/curl.ts).
+ * hinge a little bends the sheet like paper. Its pages are copied in ahead of time (lib/curl.ts).
  */
-function Strip({ k }: { k: number }) {
-  const side = (back: boolean) =>
-    ({ "--i": back ? STRIPS - 1 - k : k }) as CSSProperties;
+function Strip({ k, n }: { k: number; n: number }) {
   return (
     <div className="strip">
       <div className="sface sface--front">
-        <div className="spage" style={side(false)} />
+        <div className="spage" style={{ "--i": k } as CSSProperties} />
         <i className="sshade sshade--a" />
         <i className="sshade sshade--b" />
       </div>
       <div className="sface sface--back">
-        <div className="spage" style={side(true)} />
+        <div className="spage" style={{ "--i": n - 1 - k } as CSSProperties} />
         <i className="sshade sshade--a" />
         <i className="sshade sshade--b" />
       </div>
-      {k + 1 < STRIPS && <Strip k={k + 1} />}
+      {k + 1 < n && <Strip k={k + 1} n={n} />}
     </div>
   );
 }
 
-type LeafSpec = { front: ReactNode; frontStep: number; back?: ReactNode; backStep?: number };
-
 /**
  * A hardcover book built from CSS 3D planes.
  *
- *  spread mode — cover back = S0.left, leaf i = (S_i.right | S_{i+1}.left), base = S_last.right
- *  single mode — every page is a right-hand page; leaves turn away one at a time
+ *  spread — cover back = page 0, leaf i = (page 2i+1 | page 2i+2), base = last page
+ *  single — every page is a right-hand page; leaves turn away one at a time
  */
-export function Book({ def, index, mode, clasp }: { def: BookDef; index: number; mode: Mode; clasp?: ReactNode }) {
-  const spreadMode = mode === "spread";
-  const { spreads } = def;
+export function Book({
+  def,
+  index,
+  box,
+  paged,
+  strips,
+  clasp,
+}: {
+  def: BookDef;
+  index: number;
+  box: BookBox;
+  paged: Paged;
+  strips: number;
+  clasp?: ReactNode;
+}) {
+  const spread = box.mode === "spread";
+  const { pages, zoom } = paged;
 
-  let coverBack: ReactNode = null;
-  let leaves: LeafSpec[];
-  let base: { node: ReactNode; step: number };
+  const render = (p: PageSpec, i: number) => (
+    <PageShell volume={def.volume} section={p.section} folio={i + 1} full={p.full}>
+      {p.blocks.map((b) => (
+        <div key={b.id} data-b={b.id} style={zoom[b.id] ? ({ zoom: zoom[b.id] } as CSSProperties) : undefined}>
+          {b.node}
+        </div>
+      ))}
+    </PageShell>
+  );
 
-  if (spreadMode) {
-    coverBack = spreads[0][0];
-    leaves = spreads.slice(0, -1).map((s, i) => ({
-      front: s[1],
-      frontStep: i,
-      back: spreads[i + 1][0],
-      backStep: i + 1,
-    }));
-    base = { node: spreads[spreads.length - 1][1], step: spreads.length - 1 };
+  type Leaf = { front: number; back?: number; step: number };
+  const leaves: Leaf[] = [];
+  let basePage: number;
+  let baseStep: number;
+  if (spread) {
+    const n = pages.length / 2 - 1;
+    for (let i = 0; i < n; i++) leaves.push({ front: 2 * i + 1, back: 2 * i + 2, step: i });
+    basePage = pages.length - 1;
+    baseStep = n;
   } else {
-    const pages = spreads.flat();
-    leaves = pages.slice(0, -1).map((p, i) => ({ front: p, frontStep: i }));
-    base = { node: pages[pages.length - 1], step: pages.length - 1 };
+    for (let i = 0; i < pages.length - 1; i++) leaves.push({ front: i, step: i });
+    basePage = pages.length - 1;
+    baseStep = pages.length - 1;
   }
 
   const n = leaves.length;
-  const zOf = (i: number) => 0.22 + (0.62 * (n - i)) / Math.max(n, 1);
+  const zOf = (i: number) => 0.2 + (0.66 * (n - i)) / Math.max(n, 1);
 
   return (
     <div
       className="book-anchor"
       data-book={index}
-      style={{ "--leather": def.leather, "--accent": def.accent, "--silk": def.silk } as CSSProperties}
+      data-mode={box.mode}
+      style={
+        {
+          "--bh": `${box.bh.toFixed(2)}px`,
+          "--bw": `${box.bw.toFixed(2)}px`,
+          "--n": strips,
+          "--leather": def.leather,
+          "--accent": def.accent,
+          "--silk": def.silk,
+        } as CSSProperties
+      }
     >
       <div className="book-shadow" />
       <div className="book-body">
@@ -104,32 +117,36 @@ export function Book({ def, index, mode, clasp }: { def: BookDef; index: number;
           <div className="edge edge-bottom" />
 
           <div className="leaves">
-            <div className="leaf leaf--base" style={{ "--z": 0.12 } as CSSProperties}>
+            <div className="stack stack--r" />
+            {spread && <div className="stack stack--l" />}
+            <div className="leaf leaf--base" style={{ "--z": 0.1 } as CSSProperties}>
               <div className="leaf-inner">
-                <Face side="R" step={base.step}>
-                  {base.node}
+                <Face side="R" step={baseStep}>
+                  {render(pages[basePage], basePage)}
                 </Face>
               </div>
             </div>
             {leaves.map((lf, i) => (
-              <div key={i} className="leaf leaf--page" data-leaf={i} style={{ "--z": zOf(i) } as CSSProperties}>
+              <div key={`l${i}`} className="leaf leaf--page" data-leaf={i} style={{ "--z": zOf(i) } as CSSProperties}>
                 <div className="leaf-inner">
-                  <Face side="R" step={lf.frontStep}>
-                    {lf.front}
+                  <Face side="R" step={lf.step}>
+                    {render(pages[lf.front], lf.front)}
                   </Face>
                   {lf.back !== undefined && (
-                    <Face side="L" back step={lf.backStep!}>
-                      {lf.back}
+                    <Face side="L" back step={lf.step + 1}>
+                      {render(pages[lf.back], lf.back)}
                     </Face>
                   )}
                 </div>
               </div>
             ))}
-            <div className="leaf rig" aria-hidden>
-              <div className="leaf-inner">
-                <Strip k={0} />
+            {leaves.map((_, i) => (
+              <div key={`r${i}`} className="leaf rig" data-rig={i} aria-hidden style={{ "--z": zOf(i) } as CSSProperties}>
+                <div className="leaf-inner">
+                  <Strip k={0} n={strips} />
+                </div>
               </div>
-            </div>
+            ))}
           </div>
 
           <div className="ribbon" />
@@ -140,10 +157,10 @@ export function Book({ def, index, mode, clasp }: { def: BookDef; index: number;
                 <div className="cover-sheen" />
                 <div className="cover-content">{def.cover}</div>
               </div>
-              {spreadMode && (
+              {spread && (
                 <div className="face face--back cover-back" data-step={0}>
                   <div className="paper" data-side="L">
-                    <div className="page-content">{coverBack}</div>
+                    <div className="page-content">{render(pages[0], 0)}</div>
                     <div className="cast" />
                     <div className="shade" />
                   </div>

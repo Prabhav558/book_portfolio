@@ -8,12 +8,15 @@ const pick = (e: MouseEvent<HTMLButtonElement>, onPick: (i: number) => void, i: 
   onPick(i);
 };
 
-export const Shelf = forwardRef<HTMLDivElement, { books: BookDef[]; onPick: (i: number) => void }>(function Shelf(
-  { books, onPick },
+export const Shelf = forwardRef<
+  HTMLDivElement,
+  { books: BookDef[]; onPick: (i: number) => void; dir: "row" | "col"; labels: boolean }
+>(function Shelf(
+  { books, onPick, dir, labels },
   ref,
 ) {
   return (
-    <div ref={ref} className="shelf" aria-label="Bookshelf">
+    <div ref={ref} className="shelf" aria-label="Bookshelf" data-dir={dir} data-labels={labels ? "" : undefined}>
       <div className="shelf-slots">
         {books.map((b, i) => (
           <button

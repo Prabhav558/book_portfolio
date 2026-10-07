@@ -74,7 +74,7 @@ function box(r: Rect, o: { amp?: number; w: number; op: number; speed: number; n
 
 export function buildSketch(
   svg: SVGSVGElement,
-  layout: { book: Rect; plank: Rect; shelfBooks: Rect[] },
+  layout: { book: Rect; plank: Rect | null; shelfBooks: Rect[] },
 ) {
   svg.replaceChildren();
   const g = document.createElementNS(NS, "g");
@@ -124,6 +124,7 @@ export function buildSketch(
   seq.push(hatch);
 
   // 4 · the shelf and the three volumes waiting on it
+  if (P) {
   const shelf: Stroke[] = [
     { ...line(P.x - 6, P.y, P.x + P.w + 6, P.y, 0.8, 4), w: 1.5, o: 0.8, speed: 1100, nib: true },
     { ...line(P.x - 2, P.y + P.h, P.x + P.w + 2, P.y + P.h, 0.8, 3), w: 1.2, o: 0.7, speed: 1100, nib: true },
@@ -131,6 +132,7 @@ export function buildSketch(
     { ...line(P.x + P.w + 6, P.y, P.x + P.w + 6, P.y + P.h, 0.3, 1), w: 1, o: 0.6, speed: 300, nib: true },
   ];
   seq.push(shelf);
+  }
   shelfBooks.forEach((r) => {
     const bk = box(r, { w: 1.2, op: 0.75, speed: 600, nib: true, amp: 0.6, over: 2.5 });
     bk.push({ ...line(r.x + r.w * 0.14, r.y + 2, r.x + r.w * 0.14, r.y + r.h - 2, 0.4, 0), w: 0.8, o: 0.5, speed: 500, nib: true });

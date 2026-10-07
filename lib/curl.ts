@@ -131,6 +131,16 @@ export function createFill(rig: HTMLElement, front: HTMLElement | null, back: HT
     }
     const c = paper.cloneNode(true) as HTMLElement;
     c.querySelectorAll(".cast, .shade, .leaf-gloss").forEach((n) => n.remove());
+    // a copy must look like the page does right now, including anything typed into it
+    const src = paper.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+    c.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea").forEach((el, i) => {
+      const v = src[i]?.value ?? "";
+      if (el instanceof HTMLTextAreaElement) el.textContent = v;
+      else el.setAttribute("value", v);
+      el.removeAttribute("name");
+      el.tabIndex = -1;
+    });
+    c.querySelectorAll("a, button").forEach((el) => el.setAttribute("tabindex", "-1"));
     return c;
   };
   const f = clean(front);
@@ -165,3 +175,7 @@ export function castUnder(p: number) {
 export function castLanding(p: number) {
   return 0.8 * smooth(0.55, 0.86, p) * (1 - smooth(0.9, 1, p));
 }
+
+/** power2.inOut and its inverse, so a dragged page can be placed at an exact amount of turn. */
+export const easeTurn = (f: number) => (f < 0.5 ? 2 * f * f : 1 - 2 * (1 - f) * (1 - f));
+export const unEaseTurn = (q: number) => (q < 0.5 ? Math.sqrt(q / 2) : 1 - Math.sqrt((1 - q) / 2));

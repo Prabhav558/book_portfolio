@@ -2,7 +2,7 @@
 
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-serif: var(--font-display), ui-serif, Georgia, serif;
   --color-ink: #2b2118;
   --color-muted: #8b7763;
   --color-paper: #f5f1e8;
@@ -27,30 +27,16 @@
   --muted: #8a8780;
   --rule: rgba(38, 39, 42, 0.13);
 
-  /* Book geometry (desktop). Everything else derives from --bh. */
-  --bh: min(82vh, 62vw);
-  --bw: calc(var(--bh) * 0.72);
-  --o: calc(var(--bh) * 0.014); /* board overhang */
-  --T: calc(var(--bh) * 0.034); /* book thickness */
-  --cy: 55.5vh; /* vertical centre of the active book */
-  --slot-h: 8vh;
-  --slot-gap: 4.4vh;
-  --shelf-top: 1.8vh;
+  /* Geometry is computed in lib/layout.ts and set inline (per scene and per book). */
+  --cx: 50vw;
+  --cy: 55vh;
+  --min-em: 15px;
 
   --grain: none; /* set at runtime by lib/textures.ts */
   --paper-grain: none;
 }
 
-@media (max-width: 767px) {
-  :root {
-    --bw: min(92vw, calc(74svh * 0.72));
-    --bh: calc(var(--bw) / 0.72);
-    --cy: 55svh;
-    --slot-h: 7.2svh;
-    --slot-gap: 4.5vw;
-    --shelf-top: 1.6svh;
-  }
-}
+
 
 html {
   background: var(--night);
@@ -69,17 +55,9 @@ body {
   background: rgba(140, 122, 98, 0.28);
 }
 
-/* Lenis */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-stopped {
-  overflow: clip;
-}
+
+
+
 
 /* ───────────────────────── scene layers ───────────────────────── */
 
@@ -147,8 +125,11 @@ html.lenis body {
 /* ───────────────────────── book model ───────────────────────── */
 
 .book-anchor {
+  --o: calc(var(--bh) * 0.014); /* board overhang */
+  --T: calc(var(--bh) * 0.034); /* book thickness */
+  --pw: calc(var(--bw) - var(--o));
   position: absolute;
-  left: 50%;
+  left: var(--cx);
   top: var(--cy);
   width: var(--bw);
   height: var(--bh);
@@ -318,9 +299,6 @@ html.lenis body {
   color: rgba(255, 255, 255, 0.82);
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.3);
 }
-.cover-icon {
-  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.28)) drop-shadow(0 1px 0 rgba(255, 255, 255, 0.32));
-}
 /* the inside of a hard cover: leather turn-in around a pasted-down sheet */
 .cover-back {
   border-radius: 6px 2px 2px 6px;
@@ -404,16 +382,46 @@ html.lenis body {
 .pc {
   position: absolute;
   inset: 0;
-  font-size: 3.15cqw;
-  padding: 2.6em 2.5em 2.8em;
+  font-size: max(3.15cqw, var(--min-em));
+  padding: 2.3em 2.3em 3.1em;
   display: flex;
   flex-direction: column;
 }
 .paper[data-side="R"] .pc {
-  padding-left: 3em;
+  padding-left: 2.8em;
 }
 .paper[data-side="L"] .pc {
-  padding-right: 3em;
+  padding-right: 2.8em;
+}
+/* narrow pages give the margins back to the text */
+@container (max-width: 430px) {
+  .pc {
+    padding: 1.6em 1.25em 2.6em;
+  }
+  .paper[data-side="R"] .pc {
+    padding-left: 1.6em;
+  }
+  .paper[data-side="L"] .pc {
+    padding-right: 1.6em;
+  }
+}
+.pg-flow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  row-gap: 1.2em;
+}
+.pg-flow > * {
+  flex: none;
+}
+.pg-flow--full > * {
+  flex: 1;
+  min-height: 0;
+}
+/* a heading that doesn't open the page gets air above it */
+.pg-flow > * + * > .pg-head {
+  padding-top: 0.9em;
 }
 .pg-runner {
   display: flex;
@@ -424,45 +432,52 @@ html.lenis body {
   text-transform: uppercase;
   color: var(--muted);
   padding-bottom: 0.9em;
-  margin-bottom: 1.8em;
+  margin-bottom: 1.5em;
   border-bottom: 1px solid var(--rule);
+  flex: none;
+  white-space: nowrap;
+  gap: 1em;
 }
 .pg-folio {
   position: absolute;
-  bottom: 1.5em;
+  bottom: 1.25em;
   left: 0;
   right: 0;
   text-align: center;
-  font-family: var(--font-playfair), Georgia, serif;
-  font-style: italic;
-  font-size: 0.66em;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  font-size: 0.58em;
   color: var(--muted);
 }
 .pg-kicker {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.6em;
+  font-size: 0.62em;
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--accent, #8a5a2b);
 }
 .pg-title {
-  font-family: var(--font-playfair), Georgia, serif;
-  font-size: 2.05em;
-  line-height: 1.06;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 2.35em;
+  line-height: 1.02;
+  letter-spacing: -0.012em;
   color: var(--ink);
 }
 .pg-h3 {
-  font-family: var(--font-playfair), Georgia, serif;
-  font-size: 1.22em;
-  line-height: 1.15;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1.02em;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 .pg-body {
-  font-size: 0.86em;
-  line-height: 1.62;
-  color: #4a3b2e;
+  font-size: 0.9em;
+  line-height: 1.58;
+  color: #45464a;
 }
 .pg-small {
   font-size: 0.7em;
@@ -475,13 +490,13 @@ html.lenis body {
   border: 0;
 }
 .pg-ornament {
-  font-family: var(--font-playfair), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
   color: var(--accent, #8a5a2b);
   opacity: 0.7;
 }
 .dropcap::first-letter {
   float: left;
-  font-family: var(--font-playfair), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
   font-size: 3.6em;
   line-height: 0.82;
   padding: 0.06em 0.1em 0 0;
@@ -909,35 +924,7 @@ html.lenis body {
   transform-origin: top;
   transform: scaleY(0);
 }
-@media (max-width: 767px) {
-  .rail {
-    right: auto;
-    left: 50%;
-    top: auto;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    flex-direction: row;
-    gap: 10px;
-  }
-  .rail-item {
-    flex-direction: column-reverse;
-    gap: 6px;
-  }
-  .rail-label {
-    font-size: 8.5px;
-    letter-spacing: 0.16em;
-    transform: none;
-  }
-  .rail-track {
-    width: 54px;
-    height: 2px;
-  }
-  .rail-fill {
-    transform-origin: left;
-    transform: scaleX(0);
-    background: var(--c, var(--gold));
-  }
-}
+
 .icon-btn {
   display: grid;
   place-items: center;
@@ -1000,11 +987,7 @@ html.lenis body {
   50% { transform: translate(-50%, 8px); opacity: 0.2; }
 }
 
-@media (max-width: 767px) {
-  .shelf-labels {
-    display: none;
-  }
-}
+
 
 /* focus: visible for keyboards, invisible for pointers */
 :focus:not(:focus-visible) {
@@ -1031,19 +1014,21 @@ html.stage-lock body {
 
 /* ───────────────────────── bending page (hinged strips) ───────────────────────── */
 
-.book-anchor {
-  --pw: calc(var(--bw) - var(--o));
-  --n: 7;
-}
 .rig {
-  display: none;
+  visibility: hidden;
   top: var(--o);
   width: var(--pw);
   height: calc(var(--bh) - 2 * var(--o));
   pointer-events: none;
 }
+/* armed: painted and kept on the GPU, but invisible — so picking the page up costs nothing */
+.rig.armed {
+  visibility: inherit;
+  opacity: 0.001;
+}
 .rig.on {
-  display: block;
+  visibility: inherit;
+  opacity: 1;
 }
 .strip {
   position: absolute;
@@ -1134,18 +1119,288 @@ html.stage-lock body {
   font-weight: 600;
   color: var(--ivory);
 }
-@media (max-width: 767px) {
-  .now {
-    top: auto;
-    left: 50%;
-    bottom: 54px;
-    transform: translateX(-50%);
-  }
+
+
+
+
+/* ═════════════════════════ revamp: layout-driven scene ═════════════════════════ */
+
+/* off-screen copy of every block, used only to measure how content packs into pages */
+.measure {
+  position: fixed;
+  left: -200vw;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout style;
 }
 
-/* short screens: the book fills the height, so the shelf names step aside (the rail names every volume) */
-@media (max-height: 820px) {
-  .shelf-labels {
-    display: none;
-  }
+.stage {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pinch-zoom;
+}
+.stage input,
+.stage textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+html.stage-lock,
+html.stage-lock body {
+  touch-action: pinch-zoom;
+}
+
+.outro {
+  top: 0;
+  height: calc(var(--cy) * 2);
+}
+
+/* ── page furniture ── */
+.card {
+  border: 1px solid var(--rule);
+  border-radius: 0.5em;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 1.05em 1.1em;
+}
+.chip {
+  display: grid;
+  place-items: center;
+  min-height: 2.9em;
+  padding: 0.4em 0.5em;
+  text-align: center;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 0.5em;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.25s, transform 0.25s;
+}
+.chip:hover {
+  background: #fff;
+  transform: translateY(-2px);
+}
+.row-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0.65em 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.row-link:hover {
+  transform: translateX(3px);
+}
+.field--lined {
+  line-height: 1.7;
+  background-image: repeating-linear-gradient(transparent 0 calc(1.7em - 1px), rgba(38, 39, 42, 0.11) calc(1.7em - 1px) 1.7em);
+  background-attachment: local;
+}
+.tag {
+  font-size: 0.64em;
+  background: rgba(255, 255, 255, 0.5);
+  color: #55565a;
+}
+.plate {
+  border-radius: 0.5em;
+}
+.dropcap::first-letter {
+  font-size: 3.3em;
+  line-height: 0.8;
+  padding: 0.08em 0.08em 0 0;
+}
+.btn-ink,
+.btn-ghost {
+  font-size: 0.76em;
+  letter-spacing: 0.02em;
+}
+
+/* the two halves of the page block, seen edge-on beside the open pages */
+.stack {
+  position: absolute;
+  top: calc(var(--o) + 1px);
+  height: calc(var(--bh) - 2 * var(--o) - 2px);
+  width: calc(var(--o) * 0.9);
+  background: repeating-linear-gradient(90deg, #f3f1ec 0 1px, #d9d6cf 1px 2px);
+  pointer-events: none;
+}
+.stack--r {
+  left: var(--pw);
+  transform-origin: 0 50%;
+  transform: translateZ(calc(var(--T) * 0.08));
+  border-radius: 0 2px 2px 0;
+}
+.stack--l {
+  left: calc(var(--pw) * -1 - var(--o) * 0.9);
+  transform-origin: 100% 50%;
+  transform: translateZ(calc(var(--T) * -0.92));
+  border-radius: 2px 0 0 2px;
+}
+
+/* ── shelf: sized and placed by the layout ── */
+.shelf {
+  left: var(--shelf-x);
+  top: var(--shelf-top);
+  transform: translateX(-50%);
+}
+.shelf-slots {
+  gap: var(--slot-gap);
+  padding: 0 calc(var(--slot-gap) * 0.7);
+}
+.shelf-slot {
+  width: var(--slot-w);
+  height: var(--slot-h);
+}
+.plank {
+  margin: 0 -6px;
+}
+.shelf-labels {
+  display: none;
+  gap: var(--slot-gap);
+  padding: 0 calc(var(--slot-gap) * 0.7);
+  margin-top: 12px;
+}
+.shelf[data-labels] .shelf-labels {
+  display: flex;
+}
+.shelf-label {
+  position: relative;
+  width: var(--slot-w);
+  padding-bottom: 7px;
+  font-size: 9.5px;
+  font-weight: 500;
+}
+/* reading progress under each volume's name */
+.shelf-label::before,
+.shelf-label::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 34px;
+  height: 2px;
+  margin-left: -17px;
+  border-radius: 2px;
+}
+.shelf-label::before {
+  background: rgba(37, 39, 42, 0.12);
+}
+.shelf-label::after {
+  background: var(--c, var(--gold));
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p, 0));
+}
+/* phone landscape: the shelf stands down the left edge, one small ledge per book */
+.shelf[data-dir="col"] {
+  transform: translate(-50%, -50%);
+}
+.shelf[data-dir="col"] .shelf-slots {
+  flex-direction: column;
+  padding: 0;
+}
+.shelf[data-dir="col"] .plank {
+  display: none;
+}
+.shelf[data-dir="col"] .shelf-slot::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  right: -5px;
+  top: 100%;
+  height: 5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ecd8b4, #b08f61);
+}
+
+/* ── controls, per device kind ── */
+.rail {
+  display: none;
+}
+.now-page {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(37, 39, 42, 0.18);
+}
+
+[data-kind="phone"] .rail {
+  display: flex;
+  position: fixed;
+  right: auto;
+  left: 50%;
+  top: auto;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  flex-direction: row;
+  gap: 10px;
+}
+[data-kind="phone"] .rail-item {
+  flex-direction: column-reverse;
+  gap: 6px;
+}
+[data-kind="phone"] .rail-label {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  transform: none;
+}
+[data-kind="phone"] .rail-track {
+  width: 56px;
+  height: 2px;
+}
+[data-kind="phone"] .rail-fill {
+  transform-origin: left;
+}
+[data-kind="phone"] .now {
+  top: auto;
+  left: 50%;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 34px);
+  transform: translateX(-50%);
+}
+[data-kind="phone-land"] .now {
+  top: auto;
+  left: auto;
+  right: 12px;
+  bottom: 10px;
+}
+[data-kind="phone-land"] .now-dot,
+[data-kind="phone-land"] .hint,
+[data-kind="phone-land"] .topbar-id {
+  display: none;
+}
+[data-kind="phone"] .topbar,
+[data-kind="phone-land"] .topbar {
+  padding: 10px 12px;
+}
+
+/* phone: the hint is a small toast over the foot of the page, not a line across it */
+[data-kind="phone"] .hint {
+  bottom: 118px;
+  flex-direction: row;
+  gap: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(37, 39, 42, 0.1);
+}
+[data-kind="phone"] .hint > span:first-child {
+  display: none;
+}
+/* tablet: the shelf already names the volume, so only the page count stays */
+[data-kind="tablet"] .now-text > :not(.now-page) {
+  display: none;
+}
+[data-kind="tablet"] .now-page {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+[data-kind="phone-land"] .now,
+[data-kind="phone-land"] .topbar .pill-link {
+  display: none;
+}
+[data-kind="phone-land"] .topbar {
+  justify-content: flex-end;
 }

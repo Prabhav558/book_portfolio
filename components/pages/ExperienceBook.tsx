@@ -1,73 +1,67 @@
 "use client";
 
 import { awards, education, experience, learning, type Role } from "@/content/portfolio";
-import type { BookDef } from "@/components/book/types";
-import { CoverTitle, Fleuron, Page } from "./primitives";
+import type { Block, BookDef } from "@/components/book/types";
+import { Arrow, CoverTitle, EndCard, Heading, QuotePage, useNav } from "./primitives";
 
-/** A vertical rule that the scroll timeline "inks in" as the page lands (see [data-draw]). */
-function Rail({ end }: { end?: boolean }) {
-  return (
-    <div className="absolute top-[0.35em] bottom-0 left-[0.32em] w-px">
-      <div className="absolute inset-0 bg-[var(--rule)]" />
-      <div data-draw className="absolute inset-0 origin-top bg-[var(--accent)] opacity-70" />
-      {end && <div className="absolute -bottom-[0.3em] -left-[0.25em] h-[0.55em] w-[0.55em] rotate-45 border border-[var(--accent)] bg-[var(--paper)]" />}
-    </div>
-  );
-}
-
-function RoleBlock({ r, index }: { r: Role; index: number }) {
+function RoleBlock({ r, index, last }: { r: Role; index: number; last: boolean }) {
   return (
     <article className="relative pl-[1.7em]">
-      <span className="absolute top-[0.35em] left-0 h-[0.68em] w-[0.68em] rounded-full border-[1.5px] border-[var(--accent)] bg-[var(--paper)]" />
-      <div className="pg-kicker">{r.period}</div>
-      <h3 className="pg-title mt-[0.3em] text-[1.65em]">{r.title}</h3>
-      <div className="mt-[0.35em] font-serif text-[1em] italic text-[var(--accent)]">
-        {r.company} <span className="text-[var(--muted)] not-italic">· {r.location}</span>
+      {/* the timeline: a rule that runs on into the gap below, so consecutive roles join up */}
+      <span className={`absolute top-[0.6em] left-[0.32em] w-px bg-[var(--accent)] opacity-45 ${last ? "bottom-0" : "bottom-[-1.2em]"}`} />
+      <span className="absolute top-[0.25em] left-0 h-[0.7em] w-[0.7em] rounded-full border-[1.5px] border-[var(--accent)] bg-[var(--paper)]" />
+      <div className="flex items-baseline justify-between gap-[0.6em]">
+        <div className="pg-kicker">{r.period}</div>
+        <div className="pg-small tracking-[0.14em] uppercase">Stage {String(index + 1).padStart(2, "0")}</div>
       </div>
-      <ul className="mt-[1em] grid gap-[0.65em]">
+      <h3 className="pg-title mt-[0.25em] text-[1.75em]">{r.title}</h3>
+      <div className="pg-h3 mt-[0.2em] text-[0.95em] text-[var(--accent)]">
+        {r.company} <span className="font-normal text-[var(--muted)]">· {r.location}</span>
+      </div>
+      <ul className="mt-[0.7em] grid gap-[0.45em]">
         {r.points.map((pt) => (
           <li key={pt} className="pg-body relative pl-[1em]">
-            <span className="absolute top-[0.72em] left-0 h-px w-[0.5em] bg-[var(--accent)]" />
+            <span className="absolute top-[0.78em] left-0 h-px w-[0.5em] bg-[var(--accent)]" />
             {pt}
           </li>
         ))}
       </ul>
-      <div className="pg-small mt-[1.1em] tracking-[0.18em] uppercase">Stage {String(index + 1).padStart(2, "0")}</div>
     </article>
   );
 }
 
-function RolePage({ i, folio, intro }: { i: number; folio: number; intro?: boolean }) {
+function End() {
+  const { goToBook } = useNav();
   return (
-    <Page runner={["Volume III", "Experience"]} folio={folio}>
-      {intro && (
-        <div className="mb-[1.5em]">
-          <div className="pg-kicker">Chapter III</div>
-          <h2 className="pg-title mt-[0.35em]">A working history</h2>
-        </div>
-      )}
-      <div className="relative flex-1">
-        <Rail end={i === experience.length - 1} />
-        <RoleBlock r={experience[i]} index={i} />
-        <div className="pointer-events-none absolute right-0 bottom-[0.2em] font-serif text-[7.5em] leading-none text-[var(--accent)] italic opacity-[0.07] select-none">
-          {String(i + 1).padStart(2, "0")}
-        </div>
-      </div>
-      <div className="h-[1.6em]" />
-    </Page>
+    <EndCard
+      kicker="End of Volume III"
+      line="Last, a way"
+      accent="to reach me."
+      action={
+        <button type="button" className="btn-ghost" onClick={() => goToBook(3)}>
+          Open Volume IV <Arrow />
+        </button>
+      }
+    />
   );
 }
 
-function Education() {
-  return (
-    <Page runner={["Volume III", "Education"]} folio={5}>
-      <div className="pg-kicker">Education</div>
-      <h2 className="pg-title mt-[0.35em]">Where it started</h2>
-      <div className="mt-[1.4em] rounded-[0.4em] border border-[var(--rule)] bg-white/25 p-[1.2em]">
-        <div className="pg-small tracking-[0.18em] uppercase">{education.period}</div>
-        <div className="pg-h3 mt-[0.4em]">{education.school}</div>
-        <div className="mt-[0.3em] font-serif italic text-[var(--accent)]">{education.degree}</div>
-        <ul className="mt-[0.9em] grid gap-[0.4em]">
+const blocks: Block[] = [
+  { id: "exp-h", keep: true, section: "Experience", node: <Heading kicker="Chapter III" title="A working history" /> },
+  ...experience.map((r, i) => ({
+    id: `role-${i}`,
+    node: <RoleBlock r={r} index={i} last={i === experience.length - 1} />,
+  })),
+
+  { id: "edu-h", keep: true, section: "Education", node: <Heading kicker="Education" title="Where it started" /> },
+  {
+    id: "edu",
+    node: (
+      <div className="card">
+        <div className="pg-small tracking-[0.16em] uppercase">{education.period}</div>
+        <div className="pg-h3 mt-[0.35em]">{education.school}</div>
+        <div className="pg-body mt-[0.1em] text-[var(--accent)]">{education.degree}</div>
+        <ul className="mt-[0.6em] grid gap-[0.25em]">
           {education.notes.map((n) => (
             <li key={n} className="pg-body">
               — {n}
@@ -75,59 +69,46 @@ function Education() {
           ))}
         </ul>
       </div>
-      <div className="mt-[1.8em] pg-kicker">Currently studying</div>
-      <ul className="mt-[0.7em] grid gap-[0.75em]">
-        {learning.map((l) => (
-          <li key={l.topic} className="grid grid-cols-[1.4em_1fr] items-baseline">
-            <span className="font-serif text-[0.9em] text-[var(--accent)] italic">✦</span>
-            <div>
-              <span className="pg-h3 text-[1em]">{l.topic}</span>
-              <span className="pg-body"> — {l.note}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="flex-1" />
-      <div className="h-[1.6em]" />
-    </Page>
-  );
-}
+    ),
+  },
 
-function Recognition() {
-  return (
-    <Page runner={["Volume III", "Recognition"]} folio={6}>
-      <div className="pg-kicker">Recognition</div>
-      <h2 className="pg-title mt-[0.35em]">Awards &amp; certificates</h2>
-      <ul className="mt-[1.3em] grid gap-[0.2em]">
-        {awards.map((a) => (
-          <li key={a.title} className="flex items-baseline gap-[0.6em] border-b border-[var(--rule)] py-[0.7em]">
-            <span className="font-serif text-[1.05em] text-[var(--ink)]">{a.title}</span>
-            <span className="h-px flex-1 border-b border-dotted border-[rgba(43,33,24,0.25)]" />
-            <span className="pg-small">{a.year}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="flex-1" />
-      <div className="text-center">
-        <Fleuron className="mx-auto w-[7em] text-[var(--accent)] opacity-60" />
-        <div className="pg-small mt-[0.6em] italic">Next — Volume IV, Correspondence</div>
+  { id: "learn-h", keep: true, section: "Now", node: <Heading kicker="Currently studying" title="Still learning" /> },
+  ...learning.map((l) => ({
+    id: `learn-${l.topic}`,
+    node: (
+      <div className="grid grid-cols-[1.3em_1fr] items-baseline">
+        <span className="text-[0.8em] text-[var(--accent)]">✦</span>
+        <p className="pg-body">
+          <span className="pg-h3 text-[1em]">{l.topic}</span> — {l.note}
+        </p>
       </div>
-      <div className="h-[1.6em]" />
-    </Page>
-  );
-}
+    ),
+  })),
+
+  { id: "awards-h", keep: true, section: "Recognition", node: <Heading kicker="Recognition" title="Awards & certificates" /> },
+  ...awards.map((a) => ({
+    id: `award-${a.title}`,
+    node: (
+      <div className="flex items-baseline gap-[0.6em] border-b border-[var(--rule)] pb-[0.6em]">
+        <span className="pg-h3 text-[0.98em]">{a.title}</span>
+        <span className="h-px min-w-[1em] flex-1 border-b border-dotted border-[rgba(38,39,42,0.25)]" />
+        <span className="pg-small">{a.year}</span>
+      </div>
+    ),
+  })),
+
+  { id: "end", full: true, node: <End /> },
+];
 
 export const experienceBook: BookDef = {
   id: "experience",
   label: "Experience",
+  volume: "Volume III",
   leather: "#8ba1b5",
   accent: "#46698d",
   silk: "#46698d",
   glow: [0.84, 0.9, 1],
   cover: <CoverTitle volume="Volume III" title="Experience" subtitle="A working history" icon="timeline" />,
-  spreads: [
-    [<RolePage key="r0" i={0} folio={1} intro />, <RolePage key="r1" i={1} folio={2} />],
-    [<RolePage key="r2" i={2} folio={3} />, <RolePage key="r3" i={3} folio={4} />],
-    [<Education key="ed" />, <Recognition key="rc" />],
-  ],
+  blocks,
+  filler: <QuotePage quote="Every role taught me one thing I still use every day." by="Looking back" />,
 };

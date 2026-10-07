@@ -35,8 +35,8 @@ export function MuteToggle() {
 
 export const TopBar = forwardRef<HTMLDivElement>(function TopBar(_, ref) {
   return (
-    <div ref={ref} className="chrome fixed inset-x-0 top-0 flex items-start justify-between p-4 sm:p-6">
-      <div className="flex items-center gap-3">
+    <div ref={ref} className="chrome topbar fixed inset-x-0 top-0 flex items-start justify-between p-4 sm:p-6">
+      <div className="topbar-id flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-full border border-black/15 font-serif text-[13px] tracking-[0.06em] text-[var(--ivory)] italic">
           {profile.monogram}
         </span>
@@ -63,6 +63,7 @@ export const NowReading = forwardRef<HTMLDivElement>(function NowReading(_, ref)
         <b data-now-vol>Volume I</b>
         <span className="mx-2 opacity-50">·</span>
         <span data-now-title>About</span>
+        <span className="now-page" data-now-page />
       </span>
     </div>
   );
@@ -100,15 +101,15 @@ export const ScrollHint = forwardRef<HTMLDivElement>(function ScrollHint(_, ref)
   return (
     <div
       ref={ref}
-      className="chrome pointer-events-none fixed bottom-[96px] left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 md:bottom-auto md:left-8 md:top-1/2 md:-translate-x-0 md:-translate-y-1/2 md:flex-col-reverse md:gap-5"
+      className="chrome hint pointer-events-none fixed bottom-[96px] left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 md:bottom-auto md:left-8 md:top-1/2 md:-translate-x-0 md:-translate-y-1/2 md:flex-col-reverse md:gap-5"
       aria-hidden
     >
       <span className="relative block h-[30px] w-[19px] rounded-full border border-[rgba(37,39,42,0.4)]">
         <span className="wheel-dot absolute top-[6px] left-1/2 block h-[6px] w-[2px] rounded-full bg-[var(--ivory)]" />
       </span>
       <span className="text-[10px] tracking-[0.3em] whitespace-nowrap text-[var(--ivory-dim)] uppercase md:rotate-180 md:[writing-mode:vertical-rl]">
-        <span className="hidden md:inline">Scroll to turn pages</span>
-        <span className="md:hidden">Swipe up to turn pages</span>
+        <span className="hidden md:inline">Scroll or drag to turn pages</span>
+        <span className="md:hidden">Swipe to turn pages</span>
       </span>
     </div>
   );

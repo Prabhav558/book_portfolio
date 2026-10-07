@@ -1,38 +1,83 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { Mode } from "@/components/book/types";
-import { Stage } from "@/components/stage/Stage";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { computeLayout, type Layout } from "@/lib/layout";
+import { Measure, type Paged } from "@/components/book/Paginator";
+import { Stage, type Position } from "@/components/stage/Stage";
 import { QuickView } from "@/components/quick/QuickView";
+import { BOOKS } from "@/components/pages";
+
+type Scene = { layout: Layout; paged: Paged[]; sig: string; start: { book: number; step: number } | null };
+
+/** Structure of the scene: changes only when books must be rebuilt (modes, strips, or how blocks fall into pages). */
+const signature = (layout: Layout, paged: Paged[]) =>
+  `${layout.key}#${paged.map((p) => p.pages.map((pg) => pg.blocks.map((b) => b.id).join(",")).join("|")).join("#")}`;
 
 /**
- * Picks the right experience for the device:
- *  ≥768px  → full two-page spreads
- *  <768px  → single-page books
- *  reduced motion → the calm Quick view (with an opt-in to the animated version)
+ * Sizes the scene for the device, flows the content into pages for that size,
+ * and keeps the reader's place when the screen changes.
+ * Reduced motion → the calm Quick view (with an opt-in to the animated version).
  */
 export default function Experience() {
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [pending, setPending] = useState<Layout | null>(null);
+  const [scene, setScene] = useState<Scene | null>(null);
   const [reduced, setReduced] = useState(false);
   const [optIn, setOptIn] = useState(false);
   const introSeen = useRef(false);
+  const pos = useRef<Position>({ book: 0, block: null });
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
     const rm = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setMode(mq.matches ? "single" : "spread");
     const updateReduced = () => setReduced(rm.matches);
-    update();
     updateReduced();
-    mq.addEventListener("change", update);
     rm.addEventListener("change", updateReduced);
+
+    let last = { w: window.innerWidth, h: window.innerHeight };
+    setPending(computeLayout(last.w, last.h, BOOKS.length));
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    let timer = 0;
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        // a phone's address bar sliding away is not a new layout
+        if (coarse && w === last.w && Math.abs(h - last.h) < 130) return;
+        if (w === last.w && h === last.h) return;
+        last = { w, h };
+        setPending(computeLayout(w, h, BOOKS.length));
+      }, 140);
+    };
+    window.addEventListener("resize", onResize);
     return () => {
-      mq.removeEventListener("change", update);
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
       rm.removeEventListener("change", updateReduced);
     };
   }, []);
 
-  if (!mode) return <div className="fixed inset-0 bg-white" />;
+  const onMeasured = useCallback((paged: Paged[], layout: Layout) => {
+    const sig = signature(layout, paged);
+    setScene((prev) => {
+      // find the page that now holds whatever the reader was looking at
+      let start: Scene["start"] = null;
+      if (prev && prev.sig !== sig && introSeen.current) {
+        const { book, block } = pos.current;
+        const pages = paged[book].pages;
+        const at = block ? Math.max(0, pages.findIndex((pg) => pg.blocks.some((b) => b.id === block))) : pages.length - 1;
+        start = { book, step: layout.books[book].mode === "spread" ? Math.floor(at / 2) : at };
+      }
+      return { layout, paged, sig, start };
+    });
+    setPending(null);
+  }, []);
+
+  const onIntroDone = useCallback(() => {
+    introSeen.current = true;
+  }, []);
+  const onPosition = useCallback((p: Position) => {
+    pos.current = p;
+  }, []);
 
   if (reduced && !optIn) {
     return (
@@ -41,7 +86,7 @@ export default function Experience() {
           <button
             type="button"
             onClick={() => setOptIn(true)}
-            className="rounded-full border border-white/15 px-3 py-2 tracking-[0.2em] uppercase hover:border-white/40 hover:text-[var(--ivory)]"
+            className="rounded-full border border-black/15 px-3 py-2 tracking-[0.2em] uppercase hover:border-black/35 hover:text-[var(--ivory)]"
           >
             Animated version
           </button>
@@ -51,13 +96,20 @@ export default function Experience() {
   }
 
   return (
-    <Stage
-      key={mode}
-      mode={mode}
-      skipIntro={introSeen.current}
-      onIntroDone={() => {
-        introSeen.current = true;
-      }}
-    />
+    <>
+      {!scene && <div className="fixed inset-0 bg-white" />}
+      {pending && <Measure defs={BOOKS} layout={pending} onDone={onMeasured} />}
+      {scene && (
+        <Stage
+          key={scene.sig}
+          layout={scene.layout}
+          paged={scene.paged}
+          skipIntro={introSeen.current}
+          start={scene.start}
+          onIntroDone={onIntroDone}
+          onPosition={onPosition}
+        />
+      )}
+    </>
   );
 }

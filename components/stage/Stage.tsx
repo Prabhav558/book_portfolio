@@ -1,32 +1,50 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
 import { sound } from "@/lib/audio";
 import { installTextures } from "@/lib/textures";
-import { applyShelfPose, bookEls, buildBook, resetBook, type BookTL } from "@/lib/timeline";
+import { applyShelfPose, bookEls, buildBook, fillJob, resetBook, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
+import type { RigJob } from "@/lib/curl";
+import type { Layout } from "@/lib/layout";
 import { createDirector, type Director } from "@/lib/director";
 import { bindInput } from "@/lib/input";
 import { buildSketch } from "@/lib/sketch";
 import type { Ambient } from "@/components/three/ambient";
-import type { Mode } from "@/components/book/types";
 import { Book } from "@/components/book/Book";
+import type { Paged } from "@/components/book/Paginator";
 import { Clasp } from "@/components/intro/Clasp";
 import { Shelf } from "@/components/shelf/Shelf";
 import { IntroControls, NowReading, Rail, ScrollHint, TopBar } from "@/components/ui/Chrome";
 import { NavContext, Arrow } from "@/components/pages/primitives";
-import { aboutBook } from "@/components/pages/AboutBook";
-import { projectsBook } from "@/components/pages/ProjectsBook";
-import { experienceBook } from "@/components/pages/ExperienceBook";
-import { contactBook } from "@/components/pages/ContactBook";
+import { BOOKS } from "@/components/pages";
 import { profile } from "@/content/portfolio";
 
-const BOOKS = [aboutBook, projectsBook, experienceBook, contactBook];
 const ROMAN = ["I", "II", "III", "IV"];
 const BASE_TINT: [number, number, number] = [1, 1, 1];
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
-export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro: boolean; onIntroDone: () => void }) {
+const idleCb = (fn: () => void) =>
+  typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(fn, { timeout: 400 }) : window.setTimeout(fn, 30);
+
+export type Position = { book: number; block: string | null };
+
+export function Stage({
+  layout,
+  paged,
+  skipIntro,
+  start,
+  onIntroDone,
+  onPosition,
+}: {
+  layout: Layout;
+  paged: Paged[];
+  skipIntro: boolean;
+  /** Resting state to restore (book + spread/page step) after a re-layout. */
+  start: { book: number; step: number } | null;
+  onIntroDone: () => void;
+  onPosition: (p: Position) => void;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -40,8 +58,9 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
   const introRef = useRef<HTMLDivElement>(null);
   const claspRef = useRef<HTMLButtonElement>(null);
 
-  const cfg = useRef({ skipIntro, onIntroDone });
-  cfg.current = { skipIntro, onIntroDone };
+  const cfg = useRef({ skipIntro, onIntroDone, onPosition, layout, paged, start });
+  cfg.current = { skipIntro, onIntroDone, onPosition, layout, paged, start };
+  const relayout = useRef<() => void>(() => {});
 
   // stable handles the page content can call before/after the director exists
   const api = useRef<{ goToBook: (i: number) => void; goToStart: () => void; open: () => void; skip: () => void }>({
@@ -78,6 +97,7 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
     const nowVol = nowRef.current!.querySelector<HTMLElement>("[data-now-vol]")!;
     const nowTitle = nowRef.current!.querySelector<HTMLElement>("[data-now-title]")!;
     const nowText = nowRef.current!.querySelector<HTMLElement>(".now-text")!;
+    const nowPage = nowRef.current!.querySelector<HTMLElement>("[data-now-page]")!;
     const hintEl = rootEl.querySelector<HTMLElement>("[data-intro-hint]")!;
     const skipEl = rootEl.querySelector<HTMLElement>("[data-skip]")!;
     const clasp = claspRef.current!;
@@ -100,14 +120,16 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
     let ready = false;
     let opened = false;
     let move = { from: 0, to: 0 };
-    let lastDir: 1 | -1 = 1;
     let hintHidden = false;
     let intro: gsap.core.Timeline | null = null;
     let idle: gsap.core.Tween | null = null;
     const lastT: number[] = [];
     const lastFill: number[] = [];
     const shelved: boolean[] = [];
-    const focusY = () => 1 - anchors[0].offsetTop / window.innerHeight;
+    const focus = () => {
+      const L = cfg.current.layout;
+      return [L.cx / L.w, 1 - L.cy / L.h] as const;
+    };
 
     // ───────── shelf hover lift ─────────
     function lift(k: number, up: boolean) {
@@ -142,7 +164,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         const fill = involved ? clamp(t / b.end, 0, 1) : k < curBook ? 1 : 0;
         if (Math.abs(fill - (lastFill[k] ?? -1)) > 0.002) {
           lastFill[k] = fill;
-          railFills[k]?.style.setProperty("transform", mode === "single" ? `scaleX(${fill})` : `scaleY(${fill})`);
+          railFills[k]?.style.setProperty("transform", `scaleX(${fill})`);
+          shelfLabels[k]?.style.setProperty("--p", fill.toFixed(3));
         }
         const on = t <= 0.0001 || t >= b.labels.shelved - 0.0001;
         if (on !== shelved[k]) {
@@ -178,7 +201,9 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
     };
 
     const build = () => {
-      tls = els.map((e, k) => buildBook(k, e, slots[k], mode, { last: k === N - 1, outro: outroRef.current }));
+      tls = els.map((e, k) =>
+        buildBook(e, slots[k], { last: k === N - 1, outro: outroRef.current, left: anchors[k - 1], right: anchors[k + 1] }),
+      );
       tls.forEach((b, k) => {
         lastT[k] = 0;
         b.tl.eventCallback("onUpdate", () => onTick(k));
@@ -209,6 +234,62 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       });
     };
 
+    /** "3-4 / 10" for a spread, "3 / 12" for single pages. */
+    const setPage = (idx: number) => {
+      const s = director!.states[idx];
+      const total = cfg.current.paged[s.book].pages.length;
+      if (s.label === "end") {
+        nowPage.textContent = "";
+        return;
+      }
+      const step = Number(s.label.slice(1));
+      nowPage.textContent = els[s.book].mode === "spread" ? `${2 * step + 1}–${2 * step + 2} / ${total}` : `${step + 1} / ${total}`;
+    };
+    const report = (idx: number) => {
+      const s = director!.states[idx];
+      if (s.label === "end") return cfg.current.onPosition({ book: s.book, block: null });
+      const step = Number(s.label.slice(1));
+      const page = cfg.current.paged[s.book].pages[els[s.book].mode === "spread" ? 2 * step : step];
+      cfg.current.onPosition({ book: s.book, block: page?.blocks[0]?.id ?? null });
+    };
+
+    // Copy every leaf's pages into its bending sheet — but only while the scene is at rest,
+    // so the work never competes with an animation. (The first book is done before the intro.)
+    const fillQueue: (() => RigJob)[] = [];
+    let fillJobNow: RigJob | null = null;
+    let pumping = false;
+    const pump = () => {
+      if (pumping) return;
+      pumping = true;
+      const run = () => {
+        if (disposed || !ready || director?.busy) {
+          pumping = false;
+          return;
+        }
+        if (!fillJobNow) {
+          const next = fillQueue.shift();
+          if (!next) {
+            pumping = false;
+            return;
+          }
+          fillJobNow = next();
+        }
+        if (fillJobNow.step()) fillJobNow = null;
+        idleCb(run);
+      };
+      idleCb(run);
+    };
+    /**
+     * Keep the open book's sheets painted and ready to be picked up: all of them on capable
+     * devices (so even riffling the book shut is instant), the two beside the spread on weak ones.
+     */
+    const arm = (book: number, step: number) => {
+      const all = cfg.current.layout.strips >= 7;
+      els.forEach((e, k) =>
+        e.rigs.forEach((r, i) => r.classList.toggle("armed", k === book && (all ? !!e.fills[i] : i === step || i === step - 1))),
+      );
+    };
+
     const clearLive = () => rootEl.querySelectorAll(".face.is-live").forEach((f) => f.classList.remove("is-live"));
     const setLive = (idx: number) => {
       clearLive();
@@ -223,9 +304,9 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
           const a = director!.states[from].book;
           const b = director!.states[to].book;
           move = { from: a, to: b };
-          lastDir = to >= from ? 1 : -1;
           clearLive();
           if (a !== b) setNow(b);
+          setPage(to);
           gsap.to(amb, {
             scroll: to * 0.5,
             duration: 1.8,
@@ -241,12 +322,19 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         onSettle: (idx) => {
           move = { from: director!.states[idx].book, to: director!.states[idx].book };
           setLive(idx);
+          setPage(idx);
           syncUI();
           const s = director!.states[idx];
           if (s.label !== "end") {
-            const dir = lastDir;
-            window.setTimeout(() => tls[s.book]?.prepare(Number(s.label.slice(1)), dir), 60);
+            const step = Number(s.label.slice(1));
+            idleCb(() => {
+              if (disposed || director?.cur !== idx || director.busy) return;
+              tls[s.book]?.refresh(step);
+              arm(s.book, step);
+            });
           }
+          pump();
+          report(idx);
           if (!ready) finishIntro();
         },
       });
@@ -265,10 +353,28 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
     };
 
     let unbind: (() => void) | null = null;
+    // where the open book lies on screen, for picking up a page
+    const hit = (x: number, y: number) => {
+      if (!director) return null;
+      const s = director.states[director.cur];
+      if (s.label === "end") return null;
+      const L = cfg.current.layout;
+      const b = L.books[s.book];
+      const spread = b.mode === "spread";
+      const halfW = spread ? b.bw * CAMERA_ZOOM : b.bw / 2;
+      const halfH = (b.bh * (spread ? CAMERA_ZOOM : 1)) / 2;
+      if (Math.abs(x - L.cx) > halfW || Math.abs(y - L.cy) > halfH) return null;
+      return { side: spread ? (x < L.cx ? ("L" as const) : ("R" as const)) : ("any" as const), pageW: b.bw };
+    };
+
     function finishIntro() {
       ready = true;
-      setNow(0, true);
-      setLive(0);
+      const at = director!.states[director!.cur];
+      setNow(at.book, true);
+      setPage(director!.cur);
+      setLive(director!.cur);
+      if (at.label !== "end") arm(at.book, Number(at.label.slice(1)));
+      pump();
       gsap.to([topRef.current, nowRef.current, railRef.current, hintRef.current], {
         autoAlpha: 1,
         duration: 0.9,
@@ -280,6 +386,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         home: () => director!.jump(0),
         end: () => director!.jump(director!.states.length - 1),
         enabled: () => ready,
+        hit,
+        grab: (d) => director!.scrub(d),
       });
       cfg.current.onIntroDone();
     }
@@ -292,9 +400,11 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       idle?.kill();
       window.removeEventListener("pointermove", onMove);
       if (opts.instant) {
-        gsap.set(clasp, { visibility: "hidden" });
+        gsap.set(clasp.parentElement, { display: "none" });
         gsap.set(introRef.current, { autoAlpha: 0 });
-        tls[0].tl.time(tls[0].labels.s0, false);
+        const st = cfg.current.start;
+        const idx = st ? director.states.findIndex((x) => x.book === st.book && x.label === `s${st.step}`) : 0;
+        director.place(Math.max(0, idx));
         syncUI();
         finishIntro();
         return;
@@ -306,6 +416,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         .to(clasp, { scale: 1.08, x: -3, rotation: 0, duration: 0.09, ease: "power2.out" }, 0)
         .to(clasp, { rotationY: 168, x: 0, scale: 1, duration: 0.8, ease: "power3.inOut" }, 0.09)
         .to(clasp, { opacity: 0, duration: 0.3, ease: "power1.in" }, 0.55)
+        // gone for good: an invisible button must not sit on top of the page
+        .set(clasp.parentElement, { display: "none" }, 0.9)
         .add(() => {
           sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
@@ -323,8 +435,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       const plank = rect(rootEl.querySelector<HTMLElement>(".plank")!.getBoundingClientRect());
       const first = slots[0].getBoundingClientRect();
       const lastSlot = slots[N - 1].getBoundingClientRect();
-      const shelfBooks = [1, 2, 3].map((k) => rect(slots[k].getBoundingClientRect()));
-      const plankSpan = { x: first.left - 8, y: plank.y, w: lastSlot.right - first.left + 16, h: plank.h };
+      const shelfBooks = slots.slice(1).map((sl) => rect(sl.getBoundingClientRect()));
+      const plankSpan = plank.h > 0 ? { x: first.left - 8, y: plank.y, w: lastSlot.right - first.left + 16, h: plank.h } : null;
       sketchSvg.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
       const sk = buildSketch(sketchSvg, { book: rect(br), plank: plankSpan, shelfBooks });
 
@@ -353,7 +465,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       const maxS = (reach + 60) / (400 * 0.38);
       const irisAt = Math.max(1, sk.duration - 1.1);
 
-      gsap.set(e0.body, { scale: 0.965, y: 8 });
+      // a small rise only: scaling would make the browser redraw the whole cover every frame
+      gsap.set(e0.body, { y: 12 });
       intro = gsap.timeline({ delay: 0.1 });
       intro
         .to(introRef.current, { autoAlpha: 1, duration: 0.6, ease: "power1.out" }, 0.3)
@@ -362,14 +475,13 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         .fromTo(iris, { s: 0.001 }, { s: maxS, duration: 2.4, ease: "power2.inOut", onUpdate: setIris }, irisAt)
         .to(amb, { intensity: 1, duration: 2.4, ease: "power2.inOut", onUpdate: () => ambient?.setIntensity(amb.intensity) }, irisAt)
         .to(sk.group, { opacity: 0, duration: 1.1, ease: "power1.in" }, irisAt + 0.2)
-        .to(e0.body, { scale: 1, y: 0, duration: 2.4, ease: "power3.out" }, irisAt)
+        .to(e0.body, { y: 0, duration: 2.4, ease: "power3.out" }, irisAt)
         .fromTo(e0.sheen, { xPercent: -75 }, { xPercent: -18, duration: 1.6, ease: "power2.inOut" }, irisAt + 0.9)
         .to(skipEl, { color: "rgba(37,39,42,.58)", borderColor: "rgba(37,39,42,.14)", duration: 1.6, ease: "power2.inOut", clearProps: "color,borderColor" }, irisAt + 0.3)
         .to(topRef.current, { autoAlpha: 1, duration: 0.9, ease: "power1.out" }, irisAt + 1.3)
         .to(clasp, { x: 0, duration: 0.9, ease: "power3.out" }, irisAt + 1.5)
         .to(hintEl, { opacity: 1, duration: 0.9 }, irisAt + 2.1)
         .add(() => {
-          window.setTimeout(() => sound.prepare(), 150);
           idle = gsap.to(clasp, { rotation: 1.4, duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: -1 });
           if (fine) window.addEventListener("pointermove", onMove);
         }, irisAt + 1.9)
@@ -387,8 +499,9 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         document.fonts?.ready ?? Promise.resolve(),
       ]);
       if (disposed) return;
-      ambient = amod.createAmbient(canvasRef.current!, { particles: mode === "single" ? 170 : 380 });
-      ambient?.setFocus(0.5, focusY());
+      const L0 = cfg.current.layout;
+      ambient = amod.createAmbient(canvasRef.current!, { particles: L0.kind === "phone" ? 150 : L0.strips < 7 ? 220 : 380 });
+      ambient?.setFocus(...focus());
       if (ambient) {
         // compile shaders and upload buffers now, under the white page
         ambient.setIntensity(0.002);
@@ -396,6 +509,8 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         ambient.setIntensity(amb.intensity);
         canvasRef.current!.style.opacity = "1";
       }
+      // audio start-up can block for 100ms+: pay for it now, while the page is still blank
+      sound.prepare();
       build();
       director = makeDirector();
       // book one starts out of its slot, closed, in the middle of the table
@@ -409,12 +524,22 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
         gsap.set(e.leaves, { visibility: t >= tls[k].labels.open && t < tls[k].labels.shelved ? "inherit" : "hidden" });
       });
       if (disposed) return;
+      // the first book's sheets are copied now, a strip per frame, still hidden under the white page
+      for (let i = 0; i < els[0].rigs.length; i++) {
+        const job = fillJob(els[0], i);
+        while (!job.step()) await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        if (disposed) return;
+      }
+      els.slice(1).forEach((e) => e.rigs.forEach((_, i) => fillQueue.push(() => fillJob(e, i))));
 
       if (skipIntro) {
         gsap.set(paper, { display: "none" });
         gsap.set(sketchSvg, { display: "none" });
         openBook({ instant: true });
       } else {
+        // start drawing only once the main thread has gone quiet, so the first stroke never stutters
+        await new Promise<void>((r) => idleCb(() => requestAnimationFrame(() => r())));
+        if (disposed) return;
         startIntro();
       }
     };
@@ -436,13 +561,13 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       syncUI();
       setLive(director.cur);
     };
-    const onResize = () => {
+    // the parent re-lays the scene out (new sizes, same structure) and asks us to re-aim the timelines
+    relayout.current = () => {
       ambient?.resize();
-      ambient?.setFocus(0.5, focusY());
+      ambient?.setFocus(...focus());
       window.clearTimeout(rz);
-      rz = window.setTimeout(rebuild, 220);
+      rz = window.setTimeout(rebuild, 30);
     };
-    window.addEventListener("resize", onResize);
 
     const ticker = (time: number) => ambient?.render(time);
     gsap.ticker.add(ticker);
@@ -450,7 +575,7 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
     return () => {
       disposed = true;
       window.clearTimeout(rz);
-      window.removeEventListener("resize", onResize);
+      relayout.current = () => {};
       window.removeEventListener("pointermove", onMove);
       hoverOff.forEach((f) => f());
       unbind?.();
@@ -463,23 +588,46 @@ export function Stage({ mode, skipIntro, onIntroDone }: { mode: Mode; skipIntro:
       ambient?.dispose();
       undo.forEach((f) => f());
     };
-  }, [mode]);
+    // one mount per structure; size-only changes go through relayout()
+  }, []);
+
+  const firstLayout = useRef(true);
+  useEffect(() => {
+    if (firstLayout.current) {
+      firstLayout.current = false;
+      return;
+    }
+    relayout.current();
+  }, [layout]);
+
+  const sceneVars = {
+    "--cx": `${layout.cx.toFixed(1)}px`,
+    "--cy": `${layout.cy.toFixed(1)}px`,
+    "--shelf-x": `${layout.shelf.left.toFixed(1)}px`,
+    "--shelf-top": `${layout.shelf.top.toFixed(1)}px`,
+    "--slot-h": `${layout.shelf.slotH.toFixed(1)}px`,
+    "--slot-w": `${layout.shelf.slotW.toFixed(1)}px`,
+    "--slot-gap": `${layout.shelf.gap.toFixed(1)}px`,
+    "--min-em": `${layout.minEm}px`,
+  } as CSSProperties;
 
   return (
     <NavContext.Provider value={nav}>
-      <div ref={root} data-mode={mode}>
+      <div ref={root} data-kind={layout.kind} style={sceneVars}>
         <div className="backdrop" />
         <canvas ref={canvasRef} className="ambient-canvas" aria-hidden />
 
         <div className="stage">
-          <Shelf ref={shelfRef} books={BOOKS} onPick={(i) => api.current.goToBook(i)} />
+          <Shelf ref={shelfRef} books={BOOKS} onPick={(i) => api.current.goToBook(i)} dir={layout.shelf.dir} labels={layout.shelf.labels} />
 
           {BOOKS.map((b, i) => (
             <Book
               key={b.id}
               def={b}
               index={i}
-              mode={mode}
+              box={layout.books[i]}
+              paged={paged[i]}
+              strips={layout.strips}
               clasp={i === 0 ? <Clasp ref={claspRef} onOpen={() => api.current.open()} /> : undefined}
             />
           ))}
