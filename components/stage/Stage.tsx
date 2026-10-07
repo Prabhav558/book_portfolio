@@ -21,6 +21,7 @@ import type { Paged } from "@/components/book/Paginator";
 import { Clasp } from "@/components/intro/Clasp";
 import { Shelf } from "@/components/shelf/Shelf";
 import { WorldCanvas } from "@/components/world/WorldCanvas";
+import { asset } from "@/lib/asset";
 import { ProjectPopup } from "@/components/ui/ProjectPopup";
 import type { WorldEngine } from "@/lib/world/engine";
 import type { Rect } from "@/lib/world/types";
@@ -1084,7 +1085,7 @@ export function Stage({
     <NavContext.Provider value={nav}>
       <div ref={root} role="main" aria-label={`${profile.name} — portfolio`} data-kind={layout.kind} style={sceneVars}>
         {/* first stop for a keyboard: the same content as an ordinary page */}
-        <a href="/quick" className="skip-link">
+        <a href={asset("/quick")} className="skip-link">
           Read it as a plain page
         </a>
         <p ref={sayRef} className="sr-only" aria-live="polite" />
@@ -1137,7 +1138,13 @@ export function Stage({
         </div>
 
         <div className="ui-layer" style={{ pointerEvents: "none" }}>
-          <TopBar ref={topRef} volumes={volumes} where={() => here.current} onGo={(book, id) => api.current.goTo(book, id)} />
+          <TopBar
+            ref={topRef}
+            volumes={volumes}
+            where={() => here.current}
+            onGo={(book, id) => api.current.goTo(book, id)}
+            onHome={() => api.current.goToStart()}
+          />
           <Pager ref={nowRef} onPrev={() => api.current.step(-1)} onNext={() => api.current.step(1)} />
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />

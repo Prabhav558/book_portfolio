@@ -18,6 +18,8 @@ npm run build && npm start
 | Colours of the four volumes | `content/palette.ts` (six roles per volume; the recipe is at the top of the file) |
 | Project pictures | set `images: ["/work/name-1.jpg", "/work/name-2.jpg"]` on a featured project (files in `public/work/`, landscape, about 16:10). Until then two tinted frames stand in for them. |
 | Résumé download | replace `public/resume.pdf` |
+| Logo | `public/logo.png` is the full mark with the name; `public/logo-plate.png` is the monogram on its dark plate (the top-left corner, which also takes you back to page one); `app/icon.png` and `app/apple-icon.png` are the browser and phone icons |
+| Files in `public/` | always go through `asset("/file")` (`lib/asset.ts`) in plain `<img>` / `<a>`, so they keep working under the GitHub Pages `/book_portfolio/` prefix |
 | Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`. Without a key the form falls back to `mailto:`. |
 | Room, paper, ink, oak and steel | the tokens at the top of `app/globals.css` (`--room`, `--paper`, `--ink`, `--oak`, …) and the `.clasp-*` rules |
 | Typefaces | `app/layout.tsx` (Instrument Serif for display, Instrument Sans for text) |

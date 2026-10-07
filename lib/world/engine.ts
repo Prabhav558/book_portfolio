@@ -289,7 +289,7 @@ export class WorldEngine {
     if (this.book) list.push({ rect: this.book, pad: this.mode === "mobile" ? 0 : 18 });
     this.keeps.forEach((k) => list.push(k.rect.y <= 0 ? { rect: { ...k.rect, h: k.rect.h + body }, pad: k.pad } : k));
     // the page's own controls: the name, the index and sound, the pager
-    list.push({ rect: { x: 0, y: 0, w: 240, h: 66 + body }, pad: 0 });
+    list.push({ rect: { x: 0, y: 0, w: this.mode === "desktop" ? 290 : 80, h: 66 + body }, pad: 0 });
     list.push({ rect: { x: this.W - 230, y: 0, w: 230, h: 66 + body }, pad: 0 });
     list.push({ rect: { x: 0, y: this.H - 60, w: this.W, h: 60 }, pad: 0 });
     w.keep = list;

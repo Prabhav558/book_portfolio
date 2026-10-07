@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useState } from "react";
 import { profile } from "@/content/portfolio";
 import { sound } from "@/lib/audio";
+import { asset } from "@/lib/asset";
 import { IndexCard, type IndexVolume, type Where } from "./IndexCard";
 
 function SoundToggle() {
@@ -36,13 +37,17 @@ function SoundToggle() {
 /** Wordmark on the left; on the right, the tab of the index card and the sound button. */
 export const TopBar = forwardRef<
   HTMLDivElement,
-  { volumes: IndexVolume[]; where: () => Where; onGo: (book: number, id: string | null) => void }
->(function TopBar({ volumes, where, onGo }, ref) {
+  { volumes: IndexVolume[]; where: () => Where; onGo: (book: number, id: string | null) => void; onHome: () => void }
+>(function TopBar({ volumes, where, onGo, onHome }, ref) {
   return (
     <div ref={ref} className="chrome">
       <div className="brand">
+        {/* the monogram, on its dark plate; pressed, it takes you back to the first page */}
+        <button type="button" className="brand-logo" aria-label={`${profile.name}: back to the beginning`} data-cursor="go" onClick={onHome}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={asset("/logo-plate.png")} alt="" width={80} height={80} draggable={false} />
+        </button>
         <span className="brand-long">{profile.name}</span>
-        <span className="brand-short">{profile.monogram}</span>
       </div>
       <div className="tools">
         <IndexCard volumes={volumes} where={where} onGo={onGo} />
