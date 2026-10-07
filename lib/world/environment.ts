@@ -38,11 +38,7 @@ export function layoutScene(scene: SceneName, W: number, H: number, lite: boolea
   const lamps: Layout["lamps"] = [];
 
   if (lite) {
-    add("plant", W * 0.9, H * 0.965, 26 * u, 44 * u);
-    add("lamp", W * 0.06, H * 0.965, 20 * u, 96 * u);
-    lamps.push({ x: W * 0.06, y: H * 0.965 - 88 * u, r: 90 * u });
-    zone("plant", W * 0.9 - 24, H * 0.95, 1);
-    zone("lamp", W * 0.06 + 22, H * 0.95, -1);
+    // a phone has no spare floor: the book and the controls take all of it, so nothing is set down here
     return { props, zones, lamps };
   }
 

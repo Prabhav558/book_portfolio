@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
-import { sound } from "@/lib/audio";
+import { audio } from "@/lib/audio";
 import { installTextures } from "@/lib/textures";
 import { applyShelfPose, bookEls, buildBook, fillJob, resetBook, showLeaves, CAMERA_ZOOM, type BookTL } from "@/lib/timeline";
 import type { RigJob } from "@/lib/curl";
@@ -21,7 +21,10 @@ import type { Paged } from "@/components/book/Paginator";
 import { Clasp } from "@/components/intro/Clasp";
 import { Shelf } from "@/components/shelf/Shelf";
 import { WorldCanvas } from "@/components/world/WorldCanvas";
+import { asset } from "@/lib/asset";
 import { ProjectPopup } from "@/components/ui/ProjectPopup";
+import { SideDock } from "@/components/ui/SideDock";
+import { ChatBot } from "@/components/ui/ChatBot";
 import type { WorldEngine } from "@/lib/world/engine";
 import type { Rect } from "@/lib/world/types";
 import { IntroControls, Pager, ScrollHint, TopBar } from "@/components/ui/Chrome";
@@ -70,6 +73,7 @@ export function Stage({
   const introRef = useRef<HTMLDivElement>(null);
   const claspRef = useRef<HTMLButtonElement>(null);
   const worldRef = useRef<WorldEngine | null>(null);
+  const extraRef = useRef<HTMLDivElement>(null);
 
   const cfg = useRef({ skipIntro, onIntroDone, onPosition, layout, paged, start });
   cfg.current = { skipIntro, onIntroDone, onPosition, layout, paged, start };
@@ -164,7 +168,7 @@ export function Stage({
     // ───────── first look: everything at rest, hidden behind the white page ─────────
     els.forEach(resetBook);
     slots.forEach((s, k) => gsap.set(s, { "--filled": k === 0 ? 0 : 1 }));
-    gsap.set([topRef.current, nowRef.current, hintRef.current, introRef.current], { autoAlpha: 0 });
+    gsap.set([topRef.current, nowRef.current, hintRef.current, introRef.current, extraRef.current], { autoAlpha: 0 });
     gsap.set(hintEl, { opacity: 0 });
 
     // ───────── state ─────────
@@ -344,8 +348,8 @@ export function Stage({
       // teleports (silent resets) never make noise
       if (Math.abs(t - last) < 0.5) {
         for (const m of b.markers) {
-          if (m.fwd && last < m.time && t >= m.time) sound.play(m.fwd);
-          else if (m.back && last > m.time && t <= m.time) sound.play(m.back);
+          if (m.fwd && last < m.time && t >= m.time) audio.cue(m.fwd);
+          else if (m.back && last > m.time && t <= m.time) audio.cue(m.back);
         }
       }
       syncUI();
@@ -715,7 +719,7 @@ export function Stage({
       setLive(director!.cur);
       if (at.label !== "end") arm(at.book, Number(at.label.slice(1)));
       pump();
-      gsap.to([topRef.current, nowRef.current, hintRef.current], {
+      gsap.to([topRef.current, nowRef.current, hintRef.current, extraRef.current], {
         autoAlpha: 1,
         duration: 0.9,
         ease: "power1.out",
@@ -780,7 +784,7 @@ export function Stage({
       if (!pull.detent && pull.p > 0.55) {
         pull.detent = true;
         navigator.vibrate?.(8);
-        sound.play("shelf");
+        audio.playMetalClick("detent");
       }
       if (pull.p >= 1) {
         pull = null;
@@ -818,7 +822,7 @@ export function Stage({
     const openBook = (opts: { fast?: boolean; instant?: boolean; pulled?: boolean } = {}) => {
       if (opened || !director) return;
       opened = true;
-      sound.unlock();
+      audio.unlock();
       intro?.progress(1);
       idle?.kill();
       window.removeEventListener("pointermove", onMove);
@@ -840,7 +844,7 @@ export function Stage({
       const reach = clasp.offsetWidth;
       const t0 = opts.pulled ? 0.12 : 0.3;
       const o = gsap.timeline();
-      o.add(() => sound.play("clasp"), opts.pulled ? 0 : 0.04)
+      o.add(() => audio.playMetalClick("unlatch"), opts.pulled ? 0 : 0.04)
         .to(introRef.current, { autoAlpha: 0, duration: 0.4 }, 0)
         .to(e0.body, { rotationX: 0, rotationY: 0, duration: 0.9, ease: "power2.out" }, 0)
         .to(clasp, { rotation: 0, duration: 0.1, ease: "power2.out" }, 0)
@@ -863,7 +867,6 @@ export function Stage({
         .to(clasp, { x: -reach * 1.04, duration: 0.42, ease: "power2.in" }, t0 + 1.0)
         .set(clasp.parentElement, { display: "none" }, t0 + 1.5)
         .add(() => {
-          sound.play("open");
           director!.start(opts.fast ? 1.8 : 1);
           // the book is open on the table: the room is told, and somebody looks up
           noted = 0;
@@ -941,6 +944,7 @@ export function Stage({
         .to(ink, { opacity: 0, duration: 0.9, ease: "sine.in" }, develop + 0.5)
         .fromTo(e0.sheen, { xPercent: -75 }, { xPercent: -18, duration: 1.6, ease: "power2.inOut" }, develop + 0.7)
         .to(topRef.current, { autoAlpha: 1, duration: 0.9, ease: "power1.out" }, develop + 0.9)
+        .to(extraRef.current, { autoAlpha: 1, duration: 0.9, ease: "power1.out" }, develop + 1.3)
         .to(hintEl, { opacity: 1, duration: 0.9 }, develop + 1.2)
         .add(() => {
           idle = gsap
@@ -976,7 +980,7 @@ export function Stage({
         canvasRef.current!.style.opacity = "1";
       }
       // audio start-up can block for 100ms+: pay for it now, while the page is still blank
-      sound.prepare();
+      audio.prepare();
       build();
       director = makeDirector();
       syncWorld(true);
@@ -1084,7 +1088,7 @@ export function Stage({
     <NavContext.Provider value={nav}>
       <div ref={root} role="main" aria-label={`${profile.name} — portfolio`} data-kind={layout.kind} style={sceneVars}>
         {/* first stop for a keyboard: the same content as an ordinary page */}
-        <a href="/quick" className="skip-link">
+        <a href={asset("/quick")} className="skip-link">
           Read it as a plain page
         </a>
         <p ref={sayRef} className="sr-only" aria-live="polite" />
@@ -1137,11 +1141,22 @@ export function Stage({
         </div>
 
         <div className="ui-layer" style={{ pointerEvents: "none" }}>
-          <TopBar ref={topRef} volumes={volumes} where={() => here.current} onGo={(book, id) => api.current.goTo(book, id)} />
+          <TopBar
+            ref={topRef}
+            volumes={volumes}
+            where={() => here.current}
+            onGo={(book, id) => api.current.goTo(book, id)}
+            onHome={() => api.current.goToStart()}
+          />
           <Pager ref={nowRef} onPrev={() => api.current.step(-1)} onNext={() => api.current.step(1)} />
           <ScrollHint ref={hintRef} touch={touch} />
           <IntroControls ref={introRef} onSkip={() => api.current.skip()} touch={touch} />
           <ProjectPopup />
+          {/* the tab on the right and the chat on the left arrive with the rest of the controls */}
+          <div ref={extraRef} className="extras">
+            <SideDock />
+            <ChatBot />
+          </div>
         </div>
         <Cursor />
       </div>

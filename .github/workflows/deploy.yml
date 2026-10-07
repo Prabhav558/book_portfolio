@@ -4,6 +4,9 @@ on:
   push:
     branches: [revamp]
   workflow_dispatch:
+  # a nightly rebuild keeps the GitHub activity page current (GitHub runs scheduled workflows from the default branch only)
+  schedule:
+    - cron: "41 2 * * *"
 
 permissions:
   contents: read
@@ -27,12 +30,20 @@ jobs:
 
       - run: npm install
 
+      - name: Refresh GitHub activity
+        # writes content/github.json; if it cannot reach GitHub it leaves the last good copy alone (tools/github.mjs)
+        run: node tools/github.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build static export
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
           NEXT_EXPORT: 1
           NEXT_BASE_PATH: /book_portfolio
+          # the contact form's access key (web3forms.com). Public by design, but kept out of the repo as a secret
+          NEXT_PUBLIC_FORM_KEY: ${{ secrets.NEXT_PUBLIC_FORM_KEY }}
 
       - uses: actions/configure-pages@v5
 

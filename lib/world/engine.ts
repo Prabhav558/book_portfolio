@@ -1,4 +1,5 @@
 import { drawLamps, drawStatic, layoutScene, type Layout } from "./environment";
+import { audio } from "../audio";
 import { drawFigure } from "./figures";
 import { Interaction } from "./interaction";
 import { makeNPCs, pickTarget, stepNPC, type NPC, type WorldCtx } from "./npc";
@@ -99,7 +100,9 @@ export class WorldEngine {
     this.inter = new Interaction(this.world, () => this.wake());
     this.world.pointer = this.inter.pointer;
     this.resize();
+    audio.setAmbience(this.tod.cur.period);
     this.offTod = this.tod.onChange(() => {
+      audio.setAmbience(this.tod.cur.period);
       this.envDirty = true;
       if (this.reduced || this.paused) this.drawOnce();
     });
@@ -289,9 +292,13 @@ export class WorldEngine {
     if (this.book) list.push({ rect: this.book, pad: this.mode === "mobile" ? 0 : 18 });
     this.keeps.forEach((k) => list.push(k.rect.y <= 0 ? { rect: { ...k.rect, h: k.rect.h + body }, pad: k.pad } : k));
     // the page's own controls: the name, the index and sound, the pager
-    list.push({ rect: { x: 0, y: 0, w: 240, h: 66 + body }, pad: 0 });
+    list.push({ rect: { x: 0, y: 0, w: this.mode === "desktop" ? 290 : 80, h: 66 + body }, pad: 0 });
     list.push({ rect: { x: this.W - 230, y: 0, w: 230, h: 66 + body }, pad: 0 });
     list.push({ rect: { x: 0, y: this.H - 60, w: this.W, h: 60 }, pad: 0 });
+    if (this.mode === "desktop" && this.W >= 1100) {
+      list.push({ rect: { x: this.W - 60, y: this.H / 2 - 110, w: 60, h: 220 }, pad: 0 });
+      list.push({ rect: { x: 0, y: this.H - 200, w: 120, h: 130 }, pad: 0 });
+    }
     w.keep = list;
     w.book = this.book;
     // only while nobody can see it (the first layout) are people moved out of a keep-out at once; later they walk out

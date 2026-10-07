@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Project } from "@/content/portfolio";
 import { TextLink } from "@/components/pages/primitives";
+import { audio } from "@/lib/audio";
 import { gsap } from "@/lib/gsap";
 import { overlay } from "@/lib/overlay";
 import { projectPopup } from "@/lib/popup";
@@ -60,6 +61,7 @@ export function ProjectPopup() {
 
   useEffect(() => {
     if (!p || !card.current) return;
+    audio.playPaper();
     gsap.fromTo(veil.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" });
     gsap.fromTo(card.current, { y: 22, scale: 0.97, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" });
     card.current.querySelector<HTMLElement>(".pop-close")?.focus({ preventScroll: true });

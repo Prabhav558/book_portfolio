@@ -3,17 +3,22 @@
  * Replace the placeholder values with your own — no component changes needed.
  */
 
+import { asset } from "@/lib/asset";
+
 export const profile = {
   name: "Prabhav Singh",
   firstName: "Prabhav",
   lastName: "Singh",
   monogram: "PS",
   role: "AI Engineer",
+  /** What the role line rolls over to when it is hovered. */
+  altRole: "Software Engineer",
   tagline: "I build agentic AI systems that show their evidence, on backends that hold up in production.",
   location: "Chennai, India",
   email: "prabhavkeshwar@gmail.com",
+  whatsapp: "https://wa.me/917309464842",
   availability: "Graduating 2027, open to full-time AI engineering roles",
-  resumeUrl: "/resume.pdf",
+  resumeUrl: asset("/resume.pdf"),
   about: [
     "I'm an AI engineer who works on the unglamorous half of LLM products: orchestration, reliability, and the backend that keeps them honest. I build multi-agent systems where a model's output is checked against evidence before anyone trusts it.",
     "At TalenciaGlobal I architect a LangGraph company-intelligence engine with nine parallel research agents on AWS Bedrock. Before that, at Xenkrypt, I built core modules of a self-hosted SOC platform in FastAPI, PostgreSQL and Go.",

@@ -18,12 +18,14 @@ npm run build && npm start
 | Colours of the four volumes | `content/palette.ts` (six roles per volume; the recipe is at the top of the file) |
 | Project pictures | set `images: ["/work/name-1.jpg", "/work/name-2.jpg"]` on a featured project (files in `public/work/`, landscape, about 16:10). Until then two tinted frames stand in for them. |
 | Résumé download | replace `public/resume.pdf` |
-| Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`. Without a key the form falls back to `mailto:`. |
+| Logo | `public/logo.png` is the full mark with the name; `public/logo-plate.png` is the monogram on its dark plate (the top-left corner, which also takes you back to page one); `app/icon.png` and `app/apple-icon.png` are the browser and phone icons |
+| Files in `public/` | always go through `asset("/file")` (`lib/asset.ts`) in plain `<img>` / `<a>`, so they keep working under the GitHub Pages `/book_portfolio/` prefix |
+| Contact form | create a free key at [web3forms.com](https://web3forms.com), then add `NEXT_PUBLIC_FORM_KEY=...` to `.env.local`, **and** as a repository secret of the same name (Settings → Secrets and variables → Actions) for the deployed site. Without a key the form only opens the visitor's mail app, and says so: nothing reaches you unless they press send there. |
 | Room, paper, ink, oak and steel | the tokens at the top of `app/globals.css` (`--room`, `--paper`, `--ink`, `--oak`, …) and the `.clasp-*` rules |
 | Typefaces | `app/layout.tsx` (Instrument Serif for display, Instrument Sans for text) |
 | What a page is called in the index | `name` on its block, in the files under `components/pages/` |
 | Cover icons | `CoverIcon` in `components/pages/primitives.tsx` |
-| Real sound recordings (optional) | drop files in `public/sounds/` and list them in `SOUND_FILES` in `lib/audio.ts`. Every sound is synthesised by default. |
+| Sound | levels and the sound list in `lib/audio/config.ts` (`AUDIO_CONFIG`); the sounds themselves are in `lib/audio/synth.ts` (paper, leather, wood, brass), `voices.ts` and `ambience.ts`. All synthesised, no files. |
 
 ## The room behind the book
 
@@ -44,6 +46,26 @@ Around the book there is a quiet miniature library: shelves, a desk, a reading c
 - **Phones** get 3 slow figures and the light; tablets 5. Dragging, pushing, the custom cursor and the physics are for a mouse (`pointer: fine`) only.
 - **Reduced motion:** the calm Quick view is the default; if you opt in to the animated version the room is still.
 - **Try a time of day** with `?worldTime=21:30` on the address. Thresholds are `DEFAULT_TOD` in `timeOfDay.ts`.
+
+## The chat, the tab, the rolling line
+
+- **Chat** (`components/ui/ChatBot.tsx`, `lib/chat/brain.ts`): the round button on the left opens into "Hey, Prabhav here. Ask anything about me". It is not a language model and says so: every answer is composed from `content/portfolio.ts` (work, projects, skills, education, contact), so editing that file edits the answers. Nothing leaves the browser. To make it a real model later, put a small proxy in front of an API (never ship an API key in this static site) and have `reply()` call it.
+- **Right-hand tab** (`components/ui/SideDock.tsx`): GitHub, LinkedIn, résumé and email, on the right border from 1100 px wide up.
+- **GitHub activity page** (Experience volume, `components/pages/Activity.tsx`): a year of public commits as a heat map in the volume's colour. It reads `content/github.json`, which `node tools/github.mjs` rewrites from your public contribution calendar before every deploy (and nightly), so nothing is fetched in the browser and no token is shipped. Run the script yourself to refresh it locally.
+- **Rolling line** (`components/ui/RollText.tsx`): the role on the cover rolls over to `profile.altRole` on hover, focus or tap.
+
+## Sound
+
+A quiet antique library, never a UI. Everything is made in the browser (`lib/audio/`), so there are no files to ship, and nothing is created until the visitor's first press or key.
+
+- **One `AudioManager`** (`lib/audio/manager.ts`, the `audio` export). Components ask for a thing, never a volume: `playPageTurn()`, `playBookOpen()`, `playBookClose()`, `playMetalClick()`, `playShelfPlacement()`, `playCharacterInteraction()`. Master, effects and ambience are separate dials (defaults `AUDIO_CONFIG`: 0.35 / 0.25 / 0.12), plus an on/off switch, kept in `localStorage`. A limiter sits last.
+- **The sounds:** paper sliding with a little air (page), leather and a soft wooden weight (cover), a thin brass catch muted by cloth (clasp), oak on oak (shelf). Each has several seeded variants, never the same one twice in a row, with small random pitch and level. Every sound is brought to one loudness and capped in peak, has fades at both ends, and is rolled off above ~3 kHz.
+- **Never on scroll.** Sounds hang on the timeline's markers (a page turn, a cover, a shelf), not on wheel events; quick repeats are held apart and a riffle is thinned out.
+- **People** have voices (formant synthesis): "wohoo" when picked up, "woaahh" when pushed, each in their own pitch.
+- **The room** follows the hour (`audio.setAmbience`): daytime a faint room tone, far birds, now and then paper; evening quieter, with wind and crickets; night a very low tone and a little wind.
+- **Real recordings:** put files in `public/sounds/` and list them in `SAMPLES` in `lib/audio/config.ts` (names and counts are in the comment there). A listed sound replaces its synthesised version, is levelled on load, and an unlisted one stays synthesised, so you can swap them one at a time.
+- **Reduced motion** starts with sound off; a choice made with the switch is kept. The switch (with a volume panel) is top right.
+- **Checking the sound:** the sounds are plain functions (`render` in `synth.ts`, `measure` in `dsp.ts`), so they can be rendered and measured (peak, loudness, share of 2–6 kHz energy) without a browser.
 
 ## How it works
 

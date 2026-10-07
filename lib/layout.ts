@@ -74,11 +74,11 @@ export function computeLayout(w: number, h: number, count: number, low = lowPowe
     top = 8;
     bottom = h - 8;
   } else if (kind === "phone") {
-    shelf.slotH = clamp(h * 0.062, 40, 54);
+    shelf.slotH = clamp(h * 0.056, 36, 48);
     shelf.gap = clamp(w * 0.036, 10, 16);
     shelf.top = 12;
-    top = shelf.top + shelf.slotH + 7 + 16;
-    bottom = h - 64; // pager
+    top = shelf.top + shelf.slotH + 7 + 12;
+    bottom = h - 62; // pager
     // room for the clasp, which reaches past the fore-edge
     left = 15;
     right = w - 15;
